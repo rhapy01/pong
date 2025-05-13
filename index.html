@@ -459,29 +459,35 @@
         const speedValue = document.getElementById('speedValue');
         const difficultyButtons = document.querySelectorAll('.difficulty-button');
 
-        // Paddle properties
-        const paddleWidth = 10;
-        const paddleHeight = 50;  // Reduced from 100 to 50 (half size)
-        const leftPaddleX = 20;
-        const rightPaddleX = canvas.width - 20 - paddleWidth;
-        const playerPaddle = {
-            x: leftPaddleX,
-            y: canvas.height / 2 - paddleHeight / 2,
-            width: paddleWidth,
-            height: paddleHeight,
-            speed: 8
-        };
-        const computerPaddle = {
-            x: rightPaddleX,
-            y: canvas.height / 2 - paddleHeight / 2,
-            width: paddleWidth,
-            height: paddleHeight,
-            speed: 6,
-            reactionTime: 3, // Frames to wait before responding
-            predictionAccuracy: 0.85, // How accurately AI predicts ball position
-            maxSpeedMultiplier: 1.5 // Maximum speed boost for AI
-        };
+        // Initialize game elements
+        function initializeGame() {
+            // Get canvas and context
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            
+            // Create player paddle (left side by default)
+            playerPaddle = {
+                x: 50,
+                y: canvas.height / 2 - paddleHeight / 2,
+                width: paddleWidth,
+                height: paddleHeight,
+                speed: 10 * gameSpeed
+            };
+            
+            // Create computer paddle (right side by default)
+            computerPaddle = {
+                x: canvas.width - 50 - paddleWidth,
+                y: canvas.height / 2 - paddleHeight / 2,
+                width: paddleWidth,
+                height: paddleHeight,
+                speed: 8 * gameSpeed
+            };
+            
+            // In online mode, paddle positions will be updated based on playerSide
+        }
 
+        // These variables are already declared above
+        
         // Ball properties
         const ball = {
             x: canvas.width / 2,
@@ -496,8 +502,6 @@
         };
 
         // Scoring and game progression
-        let playerScore = 0;
-        let computerScore = 0;
         let totalHits = 0;  // Track total successful hits to increase speed over time
         let speedIncreaseInterval = 5;  // Increase speed every X hits
         let maxSpeedIncrease = 1.8;  // Maximum speed multiplier from rally length
@@ -549,10 +553,9 @@
         
         // WebSocket connection for online play
         let socket = null;
-        let playerId = null;
         let roomId = null;
-        let isHost = false;
         let opponentId = null;
+        let isHost = false;
         let playerName = "Player";
         let opponentName = "Opponent";
         
@@ -876,7 +879,8 @@
                     currentGameMode = GAME_MODE.ONLINE;
                     currentGameState = GAME_STATE.PLAYING;
                     
-                    // Initialize game with received data
+                    // Store the player's ID and opponent's ID
+                    myPlayerId = data.yourId;
                     opponentId = data.playerIds.find(id => id !== data.yourId);
                     
                     // Get opponent name if provided
@@ -884,7 +888,21 @@
                         opponentName = data.playerNames[opponentId];
                     }
                     
-                    console.log(`Game starting with opponent: ${opponentName}`);
+                    console.log(`Game starting with opponent: ${opponentName} (ID: ${opponentId}). My ID: ${myPlayerId}`);
+                    
+                    // Determine player side based on player ID order
+                    // First player in the array is left side, second is right side
+                    const playerIds = data.playerIds;
+                    playerIds.sort(); // Sort IDs to ensure consistent assignment
+                    
+                    // Assign sides based on sorted IDs
+                    if (playerIds[0] === myPlayerId) {
+                        playerSide = 'left';
+                        console.log('I am on the LEFT side');
+                    } else {
+                        playerSide = 'right';
+                        console.log('I am on the RIGHT side');
+                    }
                     
                     // Reset scores for the current match
                     playerScore = 0;
@@ -893,13 +911,15 @@
                     set2Score = { player: 0, opponent: 0 };
                     currentSet = 1;
                     isRestPeriod = false;
-                    playerSide = 'left';
                     matchTimeRemaining = 2 * 60; // 2 minutes in seconds
                     
                     // Reset paddles and ball
                     resetBall();
                     playerPaddle.y = canvas.height / 2 - paddleHeight / 2;
                     computerPaddle.y = canvas.height / 2 - paddleHeight / 2;
+                    
+                    // Update virtual controls visibility based on new game state
+                    handleGameStateChange();
                     break;
                     
                 case 'ball_moving':
@@ -913,10 +933,18 @@
                     
                 case 'opponent_move':
                     // Update opponent paddle position - apply immediately without depending on game loop
-                    computerPaddle.y = data.y;
-                    // Force a redraw to ensure opponent paddle is displayed at the correct position
                     if (currentGameState === GAME_STATE.PLAYING) {
-                        drawGame();
+                        // Verify this is actually the opponent's move
+                        if (data.playerId && data.playerId !== myPlayerId) {
+                            computerPaddle.y = data.y;
+                            // Force a redraw to ensure opponent paddle is displayed at the correct position
+                            drawGame();
+                            
+                            // Debug log to track opponent movements
+                            console.log(`Opponent ${data.playerId} paddle moved to y: ${data.y}`);
+                        } else {
+                            console.log('Received move for my own paddle, ignoring');
+                        }
                     }
                     break;
                     
@@ -1320,7 +1348,8 @@
                     if (socket && socket.readyState === WebSocket.OPEN && currentGameMode === GAME_MODE.ONLINE) {
                         socket.send(JSON.stringify({
                             type: 'paddle_move',
-                            y: playerPaddle.y
+                            y: playerPaddle.y,
+                            playerId: myPlayerId
                         }));
                     }
                 }
@@ -1332,7 +1361,8 @@
                         if (socket && socket.readyState === WebSocket.OPEN && currentGameMode === GAME_MODE.ONLINE) {
                             socket.send(JSON.stringify({
                                 type: 'paddle_move',
-                                y: playerPaddle.y
+                                y: playerPaddle.y,
+                                playerId: myPlayerId
                             }));
                         }
                     }
@@ -1358,7 +1388,8 @@
                     if (socket && socket.readyState === WebSocket.OPEN && currentGameMode === GAME_MODE.ONLINE) {
                         socket.send(JSON.stringify({
                             type: 'paddle_move',
-                            y: playerPaddle.y
+                            y: playerPaddle.y,
+                            playerId: myPlayerId
                         }));
                     }
                 }
@@ -1370,7 +1401,8 @@
                         if (socket && socket.readyState === WebSocket.OPEN && currentGameMode === GAME_MODE.ONLINE) {
                             socket.send(JSON.stringify({
                                 type: 'paddle_move',
-                                y: playerPaddle.y
+                                y: playerPaddle.y,
+                                playerId: myPlayerId
                             }));
                         }
                     }
@@ -1428,9 +1460,11 @@
                     if (!window.lastSentTime || Date.now() - window.lastSentTime > 16) { // ~60fps rate limit
                         socket.send(JSON.stringify({
                             type: 'paddle_move',
-                            y: playerPaddle.y
+                            y: playerPaddle.y,
+                            playerId: myPlayerId // Send player ID to ensure correct paddle updates
                         }));
                         window.lastSentTime = Date.now();
+                        console.log(`Sent my paddle position: ${playerPaddle.y}`);
                     }
                 }
             }
@@ -1445,8 +1479,23 @@
         function drawPaddles() {
             // Draw both paddles in black
             ctx.fillStyle = '#000'; // Black for both paddles
-            drawCurvedPaddle(playerPaddle.x, playerPaddle.y, paddleWidth, paddleHeight, true);
-            drawCurvedPaddle(computerPaddle.x, computerPaddle.y, paddleWidth, paddleHeight, false);
+            
+            // In online mode, draw paddles based on player side
+            if (currentGameMode === GAME_MODE.ONLINE) {
+                if (playerSide === 'left') {
+                    // Player is on left, opponent on right
+                    drawCurvedPaddle(playerPaddle.x, playerPaddle.y, paddleWidth, paddleHeight, true); // Left paddle
+                    drawCurvedPaddle(computerPaddle.x, computerPaddle.y, paddleWidth, paddleHeight, false); // Right paddle
+                } else {
+                    // Player is on right, opponent on left
+                    drawCurvedPaddle(computerPaddle.x, computerPaddle.y, paddleWidth, paddleHeight, true); // Left paddle
+                    drawCurvedPaddle(playerPaddle.x, playerPaddle.y, paddleWidth, paddleHeight, false); // Right paddle
+                }
+            } else {
+                // Single player mode - player always on left
+                drawCurvedPaddle(playerPaddle.x, playerPaddle.y, paddleWidth, paddleHeight, true);
+                drawCurvedPaddle(computerPaddle.x, computerPaddle.y, paddleWidth, paddleHeight, false);
+            }
         }
         
         // Helper function to draw a paddle with curved edges

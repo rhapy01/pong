@@ -390,19 +390,29 @@ wss.on('connection', (ws) => {
                     break;
                     
                 case 'paddle_move':
-                    if (roomId && rooms[roomId] && rooms[roomId].players[playerId] && rooms[roomId].gameStarted) {
-                        // Update paddle position
-                        rooms[roomId].gameState.paddles[playerId].y = data.y;
+                    if (roomId && rooms[roomId] && rooms[roomId].gameStarted) {
+                        // Get the player ID from the message or use the connection's playerId
+                        const movingPlayerId = data.playerId || playerId;
                         
-                        // Broadcast to other player
-                        for (const pid in rooms[roomId].players) {
-                            if (pid !== playerId) {
-                                rooms[roomId].players[pid].ws.send(JSON.stringify({
-                                    type: 'opponent_move',
-                                    y: data.y
-                                }));
-                                break;
+                        // Verify this is a valid player in this room
+                        if (rooms[roomId].players[movingPlayerId]) {
+                            // Update paddle position
+                            rooms[roomId].gameState.paddles[movingPlayerId].y = data.y;
+                            
+                            console.log(`Player ${movingPlayerId} moved paddle to y: ${data.y}`);
+                            
+                            // Broadcast to other players with the player ID information
+                            for (const pid in rooms[roomId].players) {
+                                if (pid !== movingPlayerId) {
+                                    rooms[roomId].players[pid].ws.send(JSON.stringify({
+                                        type: 'opponent_move',
+                                        y: data.y,
+                                        playerId: movingPlayerId
+                                    }));
+                                }
                             }
+                        } else {
+                            console.error(`Invalid player ID in paddle_move: ${movingPlayerId}`);
                         }
                     }
                     break;
