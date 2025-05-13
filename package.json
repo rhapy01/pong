@@ -1,21 +1,14 @@
 {
-  "name": "sign-pong",
+  "name": "stadium-pong",
   "version": "1.0.0",
   "description": "Multiplayer pong game with WebSocket support",
   "main": "server.js",
   "scripts": {
-    "start": "node server-socketio.js",
-    "dev": "node server.js",
-    "build": "echo 'Build step complete'"
+    "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
     "ws": "^8.13.0",
-    "uuid": "^9.0.0",
-    "socket.io": "^4.7.2",
-    "socket.io-client": "^4.7.2"
-  },
-  "engines": {
-    "node": ">=14.x"
+    "uuid": "^9.0.0"
   }
 }

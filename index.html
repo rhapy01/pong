@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>Sign Pong</title>
     <style>
         body {
@@ -20,6 +22,118 @@
             align-items: center;
             height: 100vh;
             color: white;
+            touch-action: manipulation; /* Prevents double-tap zoom */
+        }
+        
+        /* Mobile orientation handling */
+        /* Only enforce landscape orientation during gameplay, not in menu */
+        @media (orientation: portrait) and (max-width: 900px) {
+            /* Show rotate device notification only during gameplay */
+            #rotateDevice {
+                display: none; /* Hidden by default */
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.9);
+                z-index: 9999;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+                padding: 20px;
+            }
+            
+            #rotateDevice svg {
+                width: 80px;
+                height: 80px;
+                margin-bottom: 20px;
+                animation: rotate 2s infinite;
+            }
+            
+            /* Portrait-specific menu styling */
+            #mainMenu {
+                padding: 20px;
+            }
+            
+            #mainMenu h1 {
+                font-size: 36px !important;
+                margin-bottom: 30px !important;
+            }
+            
+            .menu-button {
+                width: 80% !important;
+                max-width: 300px;
+                padding: 15px 0 !important;
+                margin: 10px auto !important;
+            }
+        }
+        
+        @media (orientation: landscape) or (min-width: 901px) {
+            #rotateDevice {
+                display: none;
+            }
+        }
+        
+        /* Animation for rotate device icon */
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(90deg); }
+            50% { transform: rotate(90deg); }
+            75% { transform: rotate(0deg); }
+            100% { transform: rotate(0deg); }
+        }
+        
+        /* Mobile specific styles */
+        @media (max-width: 900px) {
+            #gameContainer {
+                width: 100% !important;
+                height: 100% !important;
+                border-radius: 0 !important;
+                transform: none !important;
+                border: none !important;
+            }
+            
+            /* Portrait mode specific styles */
+            @media (orientation: portrait) {
+                #gameCanvas {
+                    width: 90% !important;
+                    height: auto !important;
+                    max-height: 50vh !important;
+                }
+                
+                #mainMenu {
+                    padding-top: 10% !important;
+                }
+            }
+            
+            /* Landscape mode specific styles */
+            @media (orientation: landscape) {
+                #gameCanvas {
+                    width: 100% !important;
+                    height: auto !important;
+                    max-height: 80vh !important;
+                }
+            }
+            
+            .menu-button {
+                width: 80% !important;
+                max-width: 300px;
+                padding: 12px 0 !important;
+                margin: 10px auto !important;
+                font-size: 18px !important;
+            }
+            
+            #mainMenu h1 {
+                font-size: 36px !important;
+                margin-bottom: 20px !important;
+            }
+            
+            .control-button {
+                padding: 8px 12px !important;
+                font-size: 14px !important;
+            }
         }
         #gameContainer {
             position: relative;
@@ -233,6 +347,21 @@
     </style>
 </head>
 <body>
+    <!-- Rotate device notification for mobile portrait mode -->
+    <div id="rotateDevice">
+        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#FF8C00" stroke-width="2">
+            <path d="M4 20h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z"></path>
+            <path d="M12 14v.01"></path>
+            <path d="M12 2v2"></path>
+            <path d="M12 22v-2"></path>
+            <path d="M2 12h2"></path>
+            <path d="M22 12h-2"></path>
+            <path d="M20 16l-4-4 4-4"></path>
+        </svg>
+        <h2>Please Rotate Your Device</h2>
+        <p>Sign Pong works best in landscape mode</p>
+    </div>
+    
     <div id="gameContainer">
         <canvas id="gameCanvas" width="800" height="400"></canvas>
         
@@ -925,24 +1054,30 @@
             // Update game interface based on mode
             document.getElementById('pauseMenu').querySelector('h1').textContent = 
                 currentGameMode === GAME_MODE.PVE ? 'GAME PAUSED' : 'PVP GAME PAUSED';
+                
+            // Update virtual controls for mobile devices
+            handleGameStateChange();
         }
         
         function pauseGame() {
             if (currentGameState === GAME_STATE.PLAYING) {
                 currentGameState = GAME_STATE.PAUSED;
                 pauseMenu.style.display = 'flex';
+                handleGameStateChange();
             }
         }
         
         function resumeGame() {
             pauseMenu.style.display = 'none';
             currentGameState = GAME_STATE.PLAYING;
+            handleGameStateChange();
         }
         
         function restartGame() {
             pauseMenu.style.display = 'none';
             currentGameState = GAME_STATE.PLAYING;
             resetGame();
+            handleGameStateChange();
         }
         
         function showMainMenu() {
@@ -950,7 +1085,34 @@
             mainMenu.style.display = 'flex';
             difficultySelector.style.display = 'none';
             currentGameState = GAME_STATE.MENU;
+            handleGameStateChange();
         }
+        
+        // Add window resize event listener to handle orientation changes
+        window.addEventListener('resize', () => {
+            handleGameStateChange();
+        });
+        
+        // Add specific orientation change event listener for mobile devices
+        window.addEventListener('orientationchange', () => {
+            // Short delay to allow the browser to update dimensions
+            setTimeout(() => {
+                handleGameStateChange();
+                
+                // If switching to landscape during gameplay, resume the game
+                const isLandscape = window.innerWidth > window.innerHeight;
+                if (isLandscape && currentGameState === GAME_STATE.PAUSED && document.getElementById('rotateDevice').style.display === 'flex') {
+                    // Resume game after orientation change to landscape
+                    resumeGame();
+                }
+            }, 300);
+        });
+        
+        // Initialize mobile controls on page load
+        window.addEventListener('load', () => {
+            createVirtualControls();
+            handleGameStateChange();
+        });
         
         function toggleDifficultySelector() {
             if (difficultySelector.style.display === 'flex') {
@@ -1082,6 +1244,47 @@
             }
         });
         
+        // Touch controls for mobile devices
+        let touchControlsActive = false;
+        let lastTouchY = 0;
+        
+        // Add touch event listeners for mobile devices
+        canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+        canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+        canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+        
+        function handleTouchStart(event) {
+            event.preventDefault(); // Prevent scrolling when touching the canvas
+            
+            if (currentGameState === GAME_STATE.PLAYING) {
+                touchControlsActive = true;
+                const touch = event.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                lastTouchY = touch.clientY - rect.top;
+                
+                // Move paddle to touch position
+                playerPaddle.y = Math.max(0, Math.min(lastTouchY - paddleHeight / 2, canvas.height - paddleHeight));
+            }
+        }
+        
+        function handleTouchMove(event) {
+            event.preventDefault(); // Prevent scrolling when touching the canvas
+            
+            if (currentGameState === GAME_STATE.PLAYING && touchControlsActive) {
+                const touch = event.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                lastTouchY = touch.clientY - rect.top;
+                
+                // Move paddle to touch position
+                playerPaddle.y = Math.max(0, Math.min(lastTouchY - paddleHeight / 2, canvas.height - paddleHeight));
+            }
+        }
+        
+        function handleTouchEnd(event) {
+            event.preventDefault();
+            touchControlsActive = false;
+        }
+        
         // Keyboard controls for PvP mode
         const keysPressed = {};
         
@@ -1092,6 +1295,130 @@
         document.addEventListener('keyup', (event) => {
             keysPressed[event.key] = false;
         });
+        
+        // Add mobile virtual control buttons for online multiplayer mode
+        function createVirtualControls() {
+            if (document.getElementById('virtualControls')) return; // Already created
+            
+            const controlsContainer = document.createElement('div');
+            controlsContainer.id = 'virtualControls';
+            controlsContainer.style.position = 'absolute';
+            controlsContainer.style.right = '20px';
+            controlsContainer.style.top = '50%';
+            controlsContainer.style.transform = 'translateY(-50%)';
+            controlsContainer.style.display = 'none'; // Hidden by default
+            controlsContainer.style.flexDirection = 'column';
+            controlsContainer.style.gap = '20px';
+            controlsContainer.style.zIndex = '100';
+            
+            // Up button
+            const upButton = document.createElement('button');
+            upButton.id = 'upButton';
+            upButton.innerHTML = '▲';
+            upButton.style.width = '60px';
+            upButton.style.height = '60px';
+            upButton.style.fontSize = '24px';
+            upButton.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+            upButton.style.color = 'white';
+            upButton.style.border = '2px solid #FF8C00';
+            upButton.style.borderRadius = '50%';
+            upButton.style.touchAction = 'manipulation';
+            upButton.style.userSelect = 'none';
+            
+            // Down button
+            const downButton = document.createElement('button');
+            downButton.id = 'downButton';
+            downButton.innerHTML = '▼';
+            downButton.style.width = '60px';
+            downButton.style.height = '60px';
+            downButton.style.fontSize = '24px';
+            downButton.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+            downButton.style.color = 'white';
+            downButton.style.border = '2px solid #FF8C00';
+            downButton.style.borderRadius = '50%';
+            downButton.style.touchAction = 'manipulation';
+            downButton.style.userSelect = 'none';
+            
+            controlsContainer.appendChild(upButton);
+            controlsContainer.appendChild(downButton);
+            gameContainer.appendChild(controlsContainer);
+            
+            // Event listeners for virtual controls
+            let upInterval, downInterval;
+            
+            // Up button events
+            upButton.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                keysPressed['ArrowUp'] = true;
+                upInterval = setInterval(() => {
+                    keysPressed['ArrowUp'] = true;
+                }, 16);
+            });
+            
+            upButton.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keysPressed['ArrowUp'] = false;
+                clearInterval(upInterval);
+            });
+            
+            // Down button events
+            downButton.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                keysPressed['ArrowDown'] = true;
+                downInterval = setInterval(() => {
+                    keysPressed['ArrowDown'] = true;
+                }, 16);
+            });
+            
+            downButton.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keysPressed['ArrowDown'] = false;
+                clearInterval(downInterval);
+            });
+        }
+        
+        // Show/hide virtual controls based on device and game mode
+        function updateVirtualControlsVisibility() {
+            createVirtualControls(); // Ensure controls are created
+            
+            const virtualControls = document.getElementById('virtualControls');
+            if (!virtualControls) return;
+            
+            // Show virtual controls on mobile devices in online multiplayer mode
+            const isMobile = window.innerWidth <= 900 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (isMobile && currentGameMode === GAME_MODE.ONLINE && currentGameState === GAME_STATE.PLAYING) {
+                virtualControls.style.display = 'flex';
+            } else {
+                virtualControls.style.display = 'none';
+            }
+        }
+        
+        // Call this function whenever game state or mode changes
+        function handleGameStateChange() {
+            updateVirtualControlsVisibility();
+            updateOrientationRequirements();
+        }
+        
+        // Show/hide rotate device notification based on game state
+        function updateOrientationRequirements() {
+            const rotateDevice = document.getElementById('rotateDevice');
+            if (!rotateDevice) return;
+            
+            const isPortrait = window.innerHeight > window.innerWidth;
+            const isMobile = window.innerWidth <= 900 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            // Only show rotate device notification during gameplay, not in menu
+            if (isMobile && isPortrait && currentGameState === GAME_STATE.PLAYING) {
+                rotateDevice.style.display = 'flex';
+                // Pause the game if in portrait mode during gameplay
+                if (currentGameState === GAME_STATE.PLAYING) {
+                    pauseGame();
+                }
+            } else {
+                rotateDevice.style.display = 'none';
+            }
+        }
         
         function handlePlayerControls() {
             // Only process keyboard controls when game is playing
