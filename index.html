@@ -1,0 +1,2599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Pong</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000; /* Black fallback */
+            background-image: url('images/baggy.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: white;
+        }
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background-color: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+            border: 5px solid #000; /* Black border */
+            transform: perspective(1000px) rotateX(2deg);
+        }
+        #gameCanvas {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 4px solid #ecf0f1;
+            background-color: #2ecc71;
+            z-index: 10;
+        }
+        .spectator {
+            position: absolute;
+            width: 10px;
+            height: 20px;
+            background-color: #e74c3c;
+            border-radius: 2px;
+            transition: transform 0.3s ease;
+        }
+        .spectator:hover {
+            transform: scale(1.2);
+        }
+        #mainMenu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(44, 62, 80, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+        }
+        #mainMenu h1 {
+            font-size: 48px;
+            margin-bottom: 40px;
+            color: #ecf0f1;
+            text-shadow: 0 0 10px rgba(46, 204, 113, 0.8);
+        }
+        .menu-button {
+            display: block;
+            width: 300px;
+            padding: 15px 0;
+            margin: 15px auto;
+            font-size: 20px;
+            background-color: #000;
+            color: white;
+            border: 2px solid #FF8C00; /* Orange border */
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .menu-button:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 140, 0, 0.2), transparent);
+            transition: 0.5s;
+        }
+        .menu-button:hover:before {
+            left: 100%;
+        }
+        .menu-button:hover {
+            background-color: #FF8C00; /* Orange background on hover */
+            color: #000; /* Black text on hover */
+            transform: translateY(-3px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.4);
+        }
+        .menu-button:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
+        }
+        #difficultySelector {
+            display: none;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+            max-width: 800px;
+        }
+        .difficulty-button {
+            background-color: #000;
+            color: white;
+            border: 2px solid #e74c3c;
+            padding: 10px 12px;
+            margin: 5px;
+            font-size: 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 140px;
+            text-align: center;
+            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+            font-weight: 600;
+        }
+        .difficulty-button:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(231, 76, 60, 0.2), transparent);
+            transition: 0.5s;
+        }
+        .difficulty-button:hover:before {
+            left: 100%;
+        }
+        .difficulty-button:hover {
+            background-color: #e74c3c;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.4);
+        }
+        .difficulty-button:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
+        }
+        #gameControls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 15;
+            display: flex;
+            gap: 10px;
+        }
+        .control-button {
+            background-color: #000;
+            color: white;
+            border: 2px solid #FF8C00;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.5px;
+        }
+        .control-button:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 140, 0, 0.2), transparent);
+            transition: 0.5s;
+        }
+        .control-button:hover:before {
+            left: 100%;
+        }
+        .control-button:hover {
+            background-color: #FF8C00;
+            color: #000;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.4);
+        }
+        .control-button:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
+        }
+        #pauseMenu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(44, 62, 80, 0.8);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 25;
+        }
+        #speedControl {
+            display: flex;
+            align-items: center;
+            margin-top: 20px;
+            gap: 10px;
+        }
+        #speedSlider {
+            width: 150px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        
+        <div id="gameControls">
+            <button id="pauseButton" class="control-button">Pause</button>
+            <button id="menuButton" class="control-button">Menu</button>
+        </div>
+        
+        <div id="mainMenu">
+            <h1>SIGN PONG</h1>
+            <button id="pveButton" class="menu-button">Single Player</button>
+            <button id="onlineButton" class="menu-button">Online Multiplayer</button>
+            <button id="difficultyButton" class="menu-button">Difficulty: Normal</button>
+            <a href="info.html" class="menu-button" style="text-decoration: none;">How to Play & Credits</a>
+            
+            <!-- Online multiplayer menu (hidden by default) -->
+            <div id="onlineMenu" style="display: none; flex-direction: column; align-items: center; margin-top: 20px;">
+                <!-- Player name input -->
+                <div id="playerNameContainer" style="margin-bottom: 20px; text-align: center;">
+                    <p style="font-size: 18px; margin-bottom: 10px;">Enter Your Name:</p>
+                    <input type="text" id="playerNameField" placeholder="Your Name" maxlength="15"
+                           style="padding: 10px; font-size: 16px; border-radius: 5px; border: none; width: 200px; text-align: center; margin-bottom: 10px;">
+                </div>
+                
+                <button id="createRoomButton" class="menu-button">Create Room</button>
+                <button id="joinRoomButton" class="menu-button">Join Room</button>
+                <button id="quickMatchButton" class="menu-button">Quick Match</button>
+                <button id="backToMainButton" class="menu-button">Back</button>
+                
+                <!-- Room code input (hidden by default) -->
+                <div id="roomCodeInput" style="display: none; margin-top: 20px; text-align: center;">
+                    <input type="text" id="roomCodeField" placeholder="Enter Room Code" 
+                           style="padding: 10px; font-size: 16px; border-radius: 5px; border: none; width: 200px; text-align: center;">
+                    <button id="submitRoomCode" class="menu-button" style="margin-top: 10px;">Join</button>
+                    <button id="cancelRoomJoin" class="menu-button">Cancel</button>
+                </div>
+                
+                <!-- Room created info (hidden by default) -->
+                <div id="roomCreatedInfo" style="display: none; margin-top: 20px; text-align: center;">
+                    <p style="font-size: 18px; margin-bottom: 10px;">Room Code:</p>
+                    <p id="roomCodeDisplay" style="font-size: 24px; font-weight: bold; background-color: rgba(255,255,255,0.2); padding: 10px; border-radius: 5px; margin-bottom: 20px;">XXXX</p>
+                    <p style="font-size: 16px;">Share this code with your friend</p>
+                    <p id="waitingMessage" style="font-size: 16px; margin-top: 20px;">Waiting for opponent...</p>
+                    <button id="cancelRoom" class="menu-button" style="margin-top: 20px;">Cancel</button>
+                </div>
+                
+                <!-- Waiting for match info (hidden by default) -->
+                <div id="waitingForMatch" style="display: none; margin-top: 20px; text-align: center;">
+                    <p style="font-size: 18px;">Searching for opponent...</p>
+                    <div class="spinner" style="margin: 20px auto; width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 1s ease-in-out infinite;"></div>
+                    <button id="cancelSearch" class="menu-button">Cancel</button>
+                </div>
+            </div>
+            
+            <div id="difficultySelector">
+                <div style="text-align: center; color: white; margin-bottom: 15px; width: 100%;">Select Difficulty Level</div>
+                <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;">
+                    <button class="difficulty-button" data-level="1">Level 1 - Beginner</button>
+                    <button class="difficulty-button" data-level="2">Level 2 - Easy</button>
+                    <button class="difficulty-button" data-level="3">Level 3 - Casual</button>
+                    <button class="difficulty-button" data-level="4">Level 4 - Normal</button>
+                    <button class="difficulty-button" data-level="5">Level 5 - Intermediate</button>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 10px;">
+                    <button class="difficulty-button" data-level="6">Level 6 - Challenging</button>
+                    <button class="difficulty-button" data-level="7">Level 7 - Hard</button>
+                    <button class="difficulty-button" data-level="8">Level 8 - Expert</button>
+                    <button class="difficulty-button" data-level="9">Level 9 - Master</button>
+                    <button class="difficulty-button" data-level="10">Level 10 - Impossible</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="pauseMenu">
+            <h1>GAME PAUSED</h1>
+            <button id="resumeButton" class="menu-button">Resume Game</button>
+            <button id="restartButton" class="menu-button">Restart Game</button>
+            <button id="mainMenuButton" class="menu-button">Main Menu</button>
+            
+            <div id="speedControl">
+                <span>Game Speed:</span>
+                <input type="range" id="speedSlider" min="0.5" max="2" step="0.1" value="1">
+                <span id="speedValue">1.0x</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game states
+        const GAME_STATE = {
+            MENU: 'menu',
+            PLAYING: 'playing',
+            PAUSED: 'paused',
+            GAME_OVER: 'game_over'
+        };
+        
+        // Game modes
+        const GAME_MODE = {
+            PVE: 'pve',
+            ONLINE: 'online'
+        };
+        
+        // Score limit for single player mode
+        const SCORE_LIMIT = 10;
+        
+        let currentGameState = GAME_STATE.MENU;
+        let currentGameMode = GAME_MODE.PVE; // Default to PvE mode
+        let gameSpeedMultiplier = 1.0;
+        let difficultyLevel = 5; // Default difficulty (1-10)
+        
+        // DOM elements
+        const gameContainer = document.getElementById('gameContainer');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const mainMenu = document.getElementById('mainMenu');
+        const pauseMenu = document.getElementById('pauseMenu');
+        const playButton = document.getElementById('playButton');
+        const difficultyButton = document.getElementById('difficultyButton');
+        const difficultySelector = document.getElementById('difficultySelector');
+        const pauseButton = document.getElementById('pauseButton');
+        const menuButton = document.getElementById('menuButton');
+        const resumeButton = document.getElementById('resumeButton');
+        const restartButton = document.getElementById('restartButton');
+        const mainMenuButton = document.getElementById('mainMenuButton');
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValue = document.getElementById('speedValue');
+        const difficultyButtons = document.querySelectorAll('.difficulty-button');
+
+        // Paddle properties
+        const paddleWidth = 10;
+        const paddleHeight = 50;  // Reduced from 100 to 50 (half size)
+        const leftPaddleX = 20;
+        const rightPaddleX = canvas.width - 20 - paddleWidth;
+        const playerPaddle = {
+            x: leftPaddleX,
+            y: canvas.height / 2 - paddleHeight / 2,
+            width: paddleWidth,
+            height: paddleHeight,
+            speed: 8
+        };
+        const computerPaddle = {
+            x: rightPaddleX,
+            y: canvas.height / 2 - paddleHeight / 2,
+            width: paddleWidth,
+            height: paddleHeight,
+            speed: 6,
+            reactionTime: 3, // Frames to wait before responding
+            predictionAccuracy: 0.85, // How accurately AI predicts ball position
+            maxSpeedMultiplier: 1.5 // Maximum speed boost for AI
+        };
+
+        // Ball properties
+        const ball = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 10,
+            baseSpeedX: 5,  // Base speed that will be modified by game speed
+            baseSpeedY: 5,  // Base speed that will be modified by game speed
+            speedX: 5,
+            speedY: 5,
+            maxSpeed: 12,  // Maximum speed cap to keep game playable
+            lastPredictedY: 0  // Store last predicted position for AI delay
+        };
+
+        // Scoring and game progression
+        let playerScore = 0;
+        let computerScore = 0;
+        let totalHits = 0;  // Track total successful hits to increase speed over time
+        let speedIncreaseInterval = 5;  // Increase speed every X hits
+        let maxSpeedIncrease = 1.8;  // Maximum speed multiplier from rally length
+
+        // Create spectators
+        function createSpectators() {
+            const spectatorCount = 200;
+            const containerWidth = gameContainer.clientWidth;
+            const containerHeight = gameContainer.clientHeight;
+
+            for (let i = 0; i < spectatorCount; i++) {
+                const spectator = document.createElement('div');
+                spectator.classList.add('spectator');
+
+                // Distribute spectators around the game container
+                const side = Math.floor(Math.random() * 4);
+                let x, y;
+
+                switch(side) {
+                    case 0: // Top
+                        x = Math.random() * containerWidth;
+                        y = Math.random() * 100;
+                        break;
+                    case 1: // Bottom
+                        x = Math.random() * containerWidth;
+                        y = containerHeight - Math.random() * 100;
+                        break;
+                    case 2: // Left
+                        x = Math.random() * 100;
+                        y = Math.random() * containerHeight;
+                        break;
+                    case 3: // Right
+                        x = containerWidth - Math.random() * 100;
+                        y = Math.random() * containerHeight;
+                        break;
+                }
+
+                spectator.style.position = 'absolute';
+                spectator.style.left = `${x}px`;
+                spectator.style.top = `${y}px`;
+                spectator.style.backgroundColor = `hsl(${Math.random() * 360}, 70%, 50%)`;
+                
+                gameContainer.appendChild(spectator);
+            }
+        }
+
+        // Initialize spectators
+        createSpectators();
+        
+        // WebSocket connection for online play
+        let socket = null;
+        let playerId = null;
+        let roomId = null;
+        let isHost = false;
+        let opponentId = null;
+        let playerName = "Player";
+        let opponentName = "Opponent";
+        
+        // Match timing variables
+        let matchTimer = null;
+        let matchTimeRemaining = 0; // in seconds
+        let currentSet = 1;
+        let isRestPeriod = false;
+        let restTimeRemaining = 0; // in seconds
+        let playerSide = 'left'; // 'left' or 'right'
+        let set1Score = { player: 0, opponent: 0 };
+        let set2Score = { player: 0, opponent: 0 };
+        
+        // Online mode variables
+        const onlineMenu = document.getElementById('onlineMenu');
+        const playerNameField = document.getElementById('playerNameField');
+        const createRoomButton = document.getElementById('createRoomButton');
+        const joinRoomButton = document.getElementById('joinRoomButton');
+        const quickMatchButton = document.getElementById('quickMatchButton');
+        const backToMainButton = document.getElementById('backToMainButton');
+        const roomCodeInput = document.getElementById('roomCodeInput');
+        const roomCodeField = document.getElementById('roomCodeField');
+        const submitRoomCode = document.getElementById('submitRoomCode');
+        const cancelRoomJoin = document.getElementById('cancelRoomJoin');
+        const roomCreatedInfo = document.getElementById('roomCreatedInfo');
+        const roomCodeDisplay = document.getElementById('roomCodeDisplay');
+        const cancelRoom = document.getElementById('cancelRoom');
+        const waitingForMatch = document.getElementById('waitingForMatch');
+        const cancelSearch = document.getElementById('cancelSearch');
+        
+        // Set default player name if stored in localStorage
+        if (localStorage.getItem('pongPlayerName')) {
+            playerNameField.value = localStorage.getItem('pongPlayerName');
+        }
+        
+        // Menu event listeners
+        const pveButton = document.getElementById('pveButton');
+        const onlineButton = document.getElementById('onlineButton');
+        
+        // Add animation for spinner
+        const styleSheet = document.createElement('style');
+        styleSheet.textContent = `
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(styleSheet);
+        
+        pveButton.addEventListener('click', () => {
+            currentGameMode = GAME_MODE.PVE;
+            startGame();
+        });
+        
+        
+        onlineButton.addEventListener('click', () => {
+            // Hide main menu buttons
+            pveButton.style.display = 'none';
+            onlineButton.style.display = 'none';
+            difficultyButton.style.display = 'none';
+            
+            // Show online menu
+            onlineMenu.style.display = 'flex';
+            
+            // Initialize WebSocket if not already connected
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                initializeWebSocket();
+            }
+        });
+        
+        backToMainButton.addEventListener('click', () => {
+            // Hide online menu
+            onlineMenu.style.display = 'none';
+            roomCodeInput.style.display = 'none';
+            roomCreatedInfo.style.display = 'none';
+            waitingForMatch.style.display = 'none';
+            
+            // Show main menu buttons
+            pveButton.style.display = 'block';
+            onlineButton.style.display = 'block';
+            difficultyButton.style.display = 'block';
+        });
+        
+        createRoomButton.addEventListener('click', () => {
+            // Get and save player name
+            updatePlayerName();
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'create_room',
+                    playerName: playerName
+                }));
+                
+                // Hide online menu buttons
+                createRoomButton.style.display = 'none';
+                joinRoomButton.style.display = 'none';
+                quickMatchButton.style.display = 'none';
+                backToMainButton.style.display = 'none';
+                document.getElementById('playerNameContainer').style.display = 'none';
+                
+                // Show room created info
+                roomCreatedInfo.style.display = 'block';
+            }
+        });
+        
+        // Function to update player name from input field
+        function updatePlayerName() {
+            const nameInput = playerNameField.value.trim();
+            if (nameInput) {
+                playerName = nameInput.substring(0, 15); // Limit to 15 chars
+                localStorage.setItem('pongPlayerName', playerName);
+            } else {
+                playerName = "Player";
+            }
+        }
+        
+        joinRoomButton.addEventListener('click', () => {
+            // Hide online menu buttons
+            createRoomButton.style.display = 'none';
+            joinRoomButton.style.display = 'none';
+            quickMatchButton.style.display = 'none';
+            backToMainButton.style.display = 'none';
+            
+            // Show room code input
+            roomCodeInput.style.display = 'block';
+        });
+        
+        submitRoomCode.addEventListener('click', () => {
+            // Get and save player name
+            updatePlayerName();
+            
+            const code = roomCodeField.value.trim();
+            if (code && socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'join_room',
+                    roomId: code,
+                    playerName: playerName
+                }));
+                
+                // Hide room code input
+                roomCodeInput.style.display = 'none';
+                
+                // Show waiting message
+                waitingForMatch.style.display = 'block';
+            }
+        });
+        
+        cancelRoomJoin.addEventListener('click', () => {
+            // Hide room code input
+            roomCodeInput.style.display = 'none';
+            
+            // Show online menu buttons
+            createRoomButton.style.display = 'block';
+            joinRoomButton.style.display = 'block';
+            quickMatchButton.style.display = 'block';
+            backToMainButton.style.display = 'block';
+        });
+        
+        cancelRoom.addEventListener('click', () => {
+            // Hide room created info
+            roomCreatedInfo.style.display = 'none';
+            
+            // Show online menu buttons
+            createRoomButton.style.display = 'block';
+            joinRoomButton.style.display = 'block';
+            quickMatchButton.style.display = 'block';
+            backToMainButton.style.display = 'block';
+            
+            // Close room if we're host
+            if (socket && socket.readyState === WebSocket.OPEN && roomId) {
+                // Room will be automatically cleaned up when we disconnect
+                roomId = null;
+            }
+        });
+        
+        quickMatchButton.addEventListener('click', () => {
+            // Get and save player name
+            updatePlayerName();
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'find_game',
+                    playerName: playerName
+                }));
+                
+                // Hide online menu buttons
+                createRoomButton.style.display = 'none';
+                joinRoomButton.style.display = 'none';
+                quickMatchButton.style.display = 'none';
+                backToMainButton.style.display = 'none';
+                document.getElementById('playerNameContainer').style.display = 'none';
+                
+                // Show waiting for match
+                waitingForMatch.style.display = 'block';
+            }
+        });
+        
+        cancelSearch.addEventListener('click', () => {
+            // Hide waiting for match
+            waitingForMatch.style.display = 'none';
+            
+            // Show online menu buttons
+            createRoomButton.style.display = 'block';
+            joinRoomButton.style.display = 'block';
+            quickMatchButton.style.display = 'block';
+            backToMainButton.style.display = 'block';
+            
+            // We'll be removed from waiting list when we disconnect/reconnect
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.close();
+                setTimeout(initializeWebSocket, 500);
+            }
+        });
+        
+        function initializeWebSocket() {
+            // Close existing connection if any
+            if (socket) {
+                socket.close();
+            }
+            
+            // Connect to WebSocket server
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.hostname}:3000`;
+            socket = new WebSocket(wsUrl);
+            
+            socket.onopen = () => {
+                console.log('Connected to server');
+            };
+            
+            socket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleSocketMessage(data);
+                } catch (error) {
+                    console.error('Error parsing message:', error);
+                }
+            };
+            
+            socket.onclose = () => {
+                console.log('Disconnected from server');
+            };
+            
+            socket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                alert('Could not connect to server. Please try again later.');
+                
+                // Return to main menu
+                backToMainButton.click();
+            };
+        }
+        
+        function handleSocketMessage(data) {
+            switch(data.type) {
+                case 'connection':
+                    playerId = data.playerId;
+                    break;
+                    
+                case 'room_created':
+                    roomId = data.roomId;
+                    roomCodeDisplay.textContent = roomId.substring(0, 8); // Show first 8 chars of UUID
+                    break;
+                    
+                case 'player_joined':
+                    opponentName = data.playerName || "Opponent";
+                    document.getElementById('waitingMessage').textContent = `${opponentName} joined! Starting game...`;
+                    // Send ready signal
+                    socket.send(JSON.stringify({
+                        type: 'player_ready'
+                    }));
+                    break;
+                    
+                case 'room_joined':
+                    roomId = data.roomId;
+                    // Set opponent name if provided
+                    if (data.hostName) {
+                        opponentName = data.hostName;
+                        document.getElementById('waitingMessage').textContent = `Connected to ${opponentName}'s room. Waiting to start...`;
+                    }
+                    // Send ready signal
+                    socket.send(JSON.stringify({
+                        type: 'player_ready'
+                    }));
+                    break;
+                    
+                case 'waiting_for_opponent':
+                    // Already showing waiting screen
+                    break;
+                    
+                case 'game_found':
+                    roomId = data.roomId;
+                    isHost = data.isHost;
+                    if (data.opponentName) {
+                        opponentName = data.opponentName;
+                    }
+                    // Send ready signal
+                    socket.send(JSON.stringify({
+                        type: 'player_ready'
+                    }));
+                    break;
+                    
+                case 'game_starting':
+                    // Hide all menus and waiting screens
+                    mainMenu.style.display = 'none';
+                    waitingForMatch.style.display = 'none';
+                    roomCreatedInfo.style.display = 'none';
+                    roomCodeInput.style.display = 'none';
+                    
+                    // Set game mode to online
+                    currentGameMode = GAME_MODE.ONLINE;
+                    currentGameState = GAME_STATE.PLAYING;
+                    
+                    // Initialize game with received data
+                    opponentId = data.playerIds.find(id => id !== data.yourId);
+                    
+                    // Get opponent name if provided
+                    if (data.playerNames && data.playerNames[opponentId]) {
+                        opponentName = data.playerNames[opponentId];
+                    }
+                    
+                    console.log(`Game starting with opponent: ${opponentName}`);
+                    
+                    // Reset scores for the current match
+                    playerScore = 0;
+                    computerScore = 0;
+                    set1Score = { player: 0, opponent: 0 };
+                    set2Score = { player: 0, opponent: 0 };
+                    currentSet = 1;
+                    isRestPeriod = false;
+                    playerSide = 'left';
+                    matchTimeRemaining = 2 * 60; // 2 minutes in seconds
+                    
+                    // Reset paddles and ball
+                    resetBall();
+                    playerPaddle.y = canvas.height / 2 - paddleHeight / 2;
+                    computerPaddle.y = canvas.height / 2 - paddleHeight / 2;
+                    break;
+                    
+                case 'ball_moving':
+                    // Update ball speed and position
+                    console.log('Ball starting to move:', data.ball);
+                    ball.speedX = data.ball.speedX;
+                    ball.speedY = data.ball.speedY;
+                    if (data.ball.x) ball.x = data.ball.x;
+                    if (data.ball.y) ball.y = data.ball.y;
+                    break;
+                    
+                case 'opponent_move':
+                    // Update opponent paddle position
+                    computerPaddle.y = data.y;
+                    break;
+                    
+                case 'ball_update':
+                    // Update ball position (for non-host players)
+                    if (!isHost) {
+                        ball.x = data.ball.x;
+                        ball.y = data.ball.y;
+                        ball.speedX = data.ball.speedX;
+                        ball.speedY = data.ball.speedY;
+                    }
+                    break;
+                    
+                case 'score_update':
+                    // Update scores from server
+                    if (data.scores) {
+                        // Get scores for both players
+                        const myScore = data.scores[playerId] || 0;
+                        const theirScore = data.scores[opponentId] || 0;
+                        
+                        // Update local score variables
+                        playerScore = myScore;
+                        computerScore = theirScore;
+                        
+                        console.log(`Score updated from server: ${playerName}: ${playerScore} - ${opponentName}: ${computerScore}`);
+                    }
+                    break;
+                    
+                case 'timer_update':
+                    // Update match timer from server
+                    handleTimerUpdate(data);
+                    break;
+                    
+                case 'rest_period_starting':
+                    // Start rest period between sets
+                    handleRestPeriodStarting(data);
+                    break;
+                    
+                case 'rest_period_update':
+                    // Update rest period timer
+                    handleRestPeriodUpdate(data);
+                    break;
+                    
+                case 'set2_starting':
+                    // Start second set after rest period
+                    handleSet2Starting(data);
+                    break;
+                    
+                case 'match_results':
+                    // Show final match results
+                    handleMatchResults(data);
+                    break;
+                    
+                case 'opponent_disconnected':
+                    alert('Your opponent disconnected');
+                    showMainMenu();
+                    break;
+                
+                case 'error':
+                    alert('Error: ' + data.message);
+                    // Show online menu buttons
+                    createRoomButton.style.display = 'block';
+                    joinRoomButton.style.display = 'block';
+                    quickMatchButton.style.display = 'block';
+                    backToMainButton.style.display = 'block';
+                    
+                    // Hide all other menus
+                    roomCodeInput.style.display = 'none';
+                    roomCreatedInfo.style.display = 'none';
+                    waitingForMatch.style.display = 'none';
+                    break;
+            }
+        }
+        
+        difficultyButton.addEventListener('click', toggleDifficultySelector);
+        pauseButton.addEventListener('click', pauseGame);
+        menuButton.addEventListener('click', showMainMenu);
+        resumeButton.addEventListener('click', resumeGame);
+        restartButton.addEventListener('click', restartGame);
+        mainMenuButton.addEventListener('click', showMainMenu);
+        
+        // Speed control
+        speedSlider.addEventListener('input', updateGameSpeed);
+        
+        // Initialize ball last predicted position
+        ball.lastPredictedY = canvas.height / 2;
+        
+        // Setup difficulty buttons
+        difficultyButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                setDifficulty(parseInt(button.dataset.level));
+                toggleDifficultySelector();
+            });
+        });
+        
+        // Menu functions
+        function startGame() {
+            mainMenu.style.display = 'none';
+            currentGameState = GAME_STATE.PLAYING;
+            resetGame();
+            
+            // Force initial AI prediction (only needed in PvE mode)
+            if (currentGameMode === GAME_MODE.PVE) {
+                ball.lastPredictedY = canvas.height / 2;
+                aiFrameCounter = computerPaddle.reactionDelay; // Skip initial delay
+            }
+            
+            // Update game interface based on mode
+            document.getElementById('pauseMenu').querySelector('h1').textContent = 
+                currentGameMode === GAME_MODE.PVE ? 'GAME PAUSED' : 'PVP GAME PAUSED';
+        }
+        
+        function pauseGame() {
+            if (currentGameState === GAME_STATE.PLAYING) {
+                currentGameState = GAME_STATE.PAUSED;
+                pauseMenu.style.display = 'flex';
+            }
+        }
+        
+        function resumeGame() {
+            pauseMenu.style.display = 'none';
+            currentGameState = GAME_STATE.PLAYING;
+        }
+        
+        function restartGame() {
+            pauseMenu.style.display = 'none';
+            currentGameState = GAME_STATE.PLAYING;
+            resetGame();
+        }
+        
+        function showMainMenu() {
+            pauseMenu.style.display = 'none';
+            mainMenu.style.display = 'flex';
+            difficultySelector.style.display = 'none';
+            currentGameState = GAME_STATE.MENU;
+        }
+        
+        function toggleDifficultySelector() {
+            if (difficultySelector.style.display === 'flex') {
+                difficultySelector.style.display = 'none';
+            } else {
+                difficultySelector.style.display = 'flex';
+            }
+        }
+        
+        function updateGameSpeed() {
+            gameSpeedMultiplier = parseFloat(speedSlider.value);
+            speedValue.textContent = gameSpeedMultiplier.toFixed(1) + 'x';
+            
+            // Update ball speeds based on multiplier
+            updateBallSpeed();
+        }
+        
+        function updateBallSpeed() {
+            // Calculate progressive speed increase based on rally length
+            const rallySpeedMultiplier = 1 + Math.min(
+                maxSpeedIncrease - 1, // Cap at maxSpeedIncrease
+                (totalHits / speedIncreaseInterval) * 0.1 // Increase by 0.1 every speedIncreaseInterval hits
+            );
+            
+            // Preserve direction but adjust magnitude
+            const dirX = Math.sign(ball.speedX);
+            const dirY = Math.sign(ball.speedY);
+            
+            ball.speedX = dirX * ball.baseSpeedX * gameSpeedMultiplier * rallySpeedMultiplier;
+            ball.speedY = dirY * ball.baseSpeedY * gameSpeedMultiplier * rallySpeedMultiplier;
+            
+            // Update display if we're showing it
+            if (currentGameState === GAME_STATE.PLAYING) {
+                // Draw rally info
+                ctx.font = '14px Arial';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.textAlign = 'left';
+                ctx.fillText(`Rally: ${totalHits} | Speed: ${rallySpeedMultiplier.toFixed(1)}x`, 10, canvas.height - 10);
+            }
+        }
+        
+        function setDifficulty(level) {
+            difficultyLevel = level;
+            
+            // Update difficulty button text
+            const difficultyLabels = [
+                'Very Easy', 'Easy', 'Medium Easy', 'Normal', 'Medium Hard', 
+                'Hard', 'Very Hard', 'Expert', 'Master', 'Impossible'
+            ];
+            
+            difficultyButton.textContent = `Difficulty: ${difficultyLabels[level-1]}`;
+            
+            // Set computer paddle properties based on difficulty
+            switch(level) {
+                case 1: // Very Easy
+                    computerPaddle.predictionAccuracy = 0.25; // Less accurate prediction
+                    computerPaddle.speed = 3.5; // Slower movement
+                    computerPaddle.reactionDelay = 35; // Much slower reaction time
+                    break;
+                case 2: // Easy
+                    computerPaddle.predictionAccuracy = 0.35;
+                    computerPaddle.speed = 4;
+                    computerPaddle.reactionDelay = 30;
+                    break;
+                case 3: // Medium Easy
+                    computerPaddle.predictionAccuracy = 0.45;
+                    computerPaddle.speed = 4.5;
+                    computerPaddle.reactionDelay = 25;
+                    break;
+                case 4: // Normal
+                    computerPaddle.predictionAccuracy = 0.6;
+                    computerPaddle.speed = 5;
+                    computerPaddle.reactionDelay = 20;
+                    break;
+                case 5: // Medium Hard
+                    computerPaddle.predictionAccuracy = 0.7;
+                    computerPaddle.speed = 5.5;
+                    computerPaddle.reactionDelay = 15;
+                    break;
+                case 6: // Hard
+                    computerPaddle.predictionAccuracy = 0.8;
+                    computerPaddle.speed = 6;
+                    computerPaddle.reactionDelay = 10;
+                    break;
+                case 7: // Very Hard
+                    computerPaddle.predictionAccuracy = 0.85;
+                    computerPaddle.speed = 6.5;
+                    computerPaddle.reactionDelay = 6;
+                    break;
+                case 8: // Expert
+                    computerPaddle.predictionAccuracy = 0.9;
+                    computerPaddle.speed = 7;
+                    computerPaddle.reactionDelay = 3;
+                    break;
+                case 9: // Master
+                    computerPaddle.predictionAccuracy = 0.95;
+                    computerPaddle.speed = 7.5;
+                    computerPaddle.reactionDelay = 1;
+                    break;
+                case 10: // Impossible
+                    computerPaddle.predictionAccuracy = 0.98; // Not quite perfect to allow some chance
+                    computerPaddle.speed = 8.5;
+                    computerPaddle.reactionDelay = 0;
+                    break;
+            }
+            
+            // Reset game progression
+            totalHits = 0;
+            updateBallSpeed();
+        }
+        
+        function resetGame() {
+            playerScore = 0;
+            computerScore = 0;
+            resetBall();
+            playerPaddle.y = canvas.height / 2 - paddleHeight / 2;
+            computerPaddle.y = canvas.height / 2 - paddleHeight / 2;
+        }
+
+        // Player paddle controls
+        // Mouse control for player 1 in PvE mode
+        document.addEventListener('mousemove', (event) => {
+            if (currentGameState === GAME_STATE.PLAYING) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseY = event.clientY - rect.top;
+                
+                // Constrain paddle movement within canvas
+                playerPaddle.y = Math.max(0, Math.min(mouseY - paddleHeight / 2, canvas.height - paddleHeight));
+            }
+        });
+        
+        // Keyboard controls for PvP mode
+        const keysPressed = {};
+        
+        document.addEventListener('keydown', (event) => {
+            keysPressed[event.key] = true;
+        });
+        
+        document.addEventListener('keyup', (event) => {
+            keysPressed[event.key] = false;
+        });
+        
+        function handlePlayerControls() {
+            // Only process keyboard controls when game is playing
+            if (currentGameState !== GAME_STATE.PLAYING) return;
+            
+            // Online mode
+            if (currentGameMode === GAME_MODE.ONLINE) {
+                let oldY = playerPaddle.y;
+                
+                // Player controls (W/S keys or Up/Down arrows)
+                if (keysPressed['w'] || keysPressed['W'] || keysPressed['ArrowUp']) {
+                    playerPaddle.y = Math.max(0, playerPaddle.y - playerPaddle.speed);
+                }
+                if (keysPressed['s'] || keysPressed['S'] || keysPressed['ArrowDown']) {
+                    playerPaddle.y = Math.min(canvas.height - paddleHeight, playerPaddle.y + playerPaddle.speed);
+                }
+                
+                // Send paddle position to server if it changed
+                if (socket && socket.readyState === WebSocket.OPEN && playerPaddle.y !== oldY) {
+                    socket.send(JSON.stringify({
+                        type: 'paddle_move',
+                        y: playerPaddle.y
+                    }));
+                }
+            }
+        }
+
+        function resumeGame() {
+            pauseMenu.style.display = 'none';
+            currentGameState = GAME_STATE.PLAYING;
+        }
+            
+        // Draw paddles with curved edges
+        function drawPaddles() {
+            // Draw both paddles in black
+            ctx.fillStyle = '#000'; // Black for both paddles
+            drawCurvedPaddle(playerPaddle.x, playerPaddle.y, paddleWidth, paddleHeight, true);
+            drawCurvedPaddle(computerPaddle.x, computerPaddle.y, paddleWidth, paddleHeight, false);
+        }
+        
+        // Helper function to draw a paddle with curved edges
+        function drawCurvedPaddle(x, y, width, height, isLeft) {
+            const radius = height / 3; // Curve radius (adjust for more/less curve)
+            
+            ctx.beginPath();
+            
+            if (isLeft) {
+                // Left paddle (player)
+                // Start from top-left (with straight edge)
+                ctx.moveTo(x, y);
+                // Draw straight left edge
+                ctx.lineTo(x, y + height);
+                // Draw bottom edge with slight curve
+                ctx.quadraticCurveTo(x + width/2, y + height + radius/2, x + width, y + height - radius/2);
+                // Draw right curved edge
+                ctx.quadraticCurveTo(x + width + radius/4, y + height/2, x + width, y + radius/2);
+                // Draw top edge with slight curve
+                ctx.quadraticCurveTo(x + width/2, y - radius/2, x, y);
+            } else {
+                // Right paddle (computer)
+                // Start from top-right (with straight edge)
+                ctx.moveTo(x + width, y);
+                // Draw straight right edge
+                ctx.lineTo(x + width, y + height);
+                // Draw bottom edge with slight curve
+                ctx.quadraticCurveTo(x + width/2, y + height + radius/2, x, y + height - radius/2);
+                // Draw left curved edge
+                ctx.quadraticCurveTo(x - radius/4, y + height/2, x, y + radius/2);
+                // Draw top edge with slight curve
+                ctx.quadraticCurveTo(x + width/2, y - radius/2, x + width, y);
+            }
+            
+            ctx.closePath();
+            ctx.fill();
+            
+            // Add a subtle gradient for 3D effect
+            const gradient = ctx.createLinearGradient(
+                isLeft ? x : x + width,
+                y,
+                isLeft ? x + width : x,
+                y
+            );
+            gradient.addColorStop(0, 'rgba(255, 165, 0, 0.3)');
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0.2)');
+            
+            ctx.fillStyle = gradient;
+            ctx.fill();
+        }
+
+        // Draw ball
+        function drawBall() {
+            ctx.beginPath();
+            ctx.fillStyle = '#000'; // Black ball
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        // Draw scores on the game board
+function drawScores() {
+    // Set font and alignment for scores
+    ctx.font = 'bold 32px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#FF8C00'; // Orange color for scores
+    
+    // Draw player score
+    ctx.fillText(playerScore, canvas.width / 4, 50);
+    
+    // Draw computer score
+    ctx.fillText(computerScore, (canvas.width / 4) * 3, 50);
+    
+    // Draw score limit indicator
+    ctx.font = '16px Arial';
+    ctx.fillText(`First to ${SCORE_LIMIT} wins!`, canvas.width / 2, 20);
+    
+    // Draw player labels
+    ctx.font = '18px Arial';
+    ctx.fillText('YOU', canvas.width / 4, 80);
+    ctx.fillText('COMPUTER', (canvas.width / 4) * 3, 80);
+}
+
+function drawGame() {
+    // Clear canvas with white background
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw center line in orange
+    ctx.strokeStyle = '#FF8C00'; // Orange color
+    ctx.setLineDash([10, 10]);
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2, 0);
+    ctx.lineTo(canvas.width / 2, canvas.height);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Draw orange boundary lines
+    ctx.strokeStyle = '#FF8C00'; // Orange color
+    ctx.lineWidth = 4;
+    ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+    ctx.lineWidth = 1;
+    
+    // Draw scores
+    drawScores();
+        }
+
+        // Draw scores and game info
+        // Match timer is now controlled by the server
+        // These functions handle the timer updates from the server
+        function handleTimerUpdate(data) {
+            // Update local timer state
+            matchTimeRemaining = data.timeRemaining;
+            currentSet = data.currentSet;
+            
+            // Update the display
+            // (The timer is displayed in the drawScores function)
+        }
+        
+        function handleRestPeriodStarting(data) {
+            console.log('Rest period starting', data);
+            // Update local state
+            isRestPeriod = true;
+            restTimeRemaining = data.matchState.restTimeRemaining;
+            
+            // Save set 1 scores
+            const myId = playerId;
+            const theOpponentId = Object.keys(data.matchState.set1Scores).find(id => id !== myId);
+            
+            console.log('Set 1 scores from server:', data.matchState.set1Scores);
+            console.log('My ID:', myId, 'Opponent ID:', theOpponentId);
+            
+            set1Score.player = data.matchState.set1Scores[myId];
+            set1Score.opponent = data.matchState.set1Scores[theOpponentId];
+            
+            console.log('Set 1 scores saved:', set1Score);
+            
+            // Display rest period message
+            showRestPeriodMessage();
+        }
+        
+        function handleRestPeriodUpdate(data) {
+            // Update local rest timer
+            restTimeRemaining = data.restTimeRemaining;
+            
+            // Update the rest timer display if it exists
+            const timerElement = document.getElementById('restTimer');
+            if (timerElement) {
+                timerElement.textContent = `Rest Period: ${formatTime(restTimeRemaining)}`;
+            }
+        }
+        
+        function handleSet2Starting(data) {
+            // End rest period
+            isRestPeriod = false;
+            currentSet = 2;
+            matchTimeRemaining = data.matchState.timeRemaining;
+            
+            // Switch sides
+            playerSide = (playerSide === 'left') ? 'right' : 'left';
+            
+            // Update paddle positions based on new sides
+            if (playerSide === 'left') {
+                playerPaddle.x = leftPaddleX;
+                computerPaddle.x = rightPaddleX;
+            } else {
+                playerPaddle.x = rightPaddleX;
+                computerPaddle.x = leftPaddleX;
+            }
+            
+            // Reset scores for set 2
+            playerScore = 0;
+            computerScore = 0;
+            
+            // Reset ball and paddles
+            resetBall();
+            
+            // Remove rest period overlay if it exists
+            const overlay = document.getElementById('restPeriodOverlay');
+            if (overlay) {
+                document.body.removeChild(overlay);
+            }
+            
+            // Show set 2 starting notification
+            showSet2StartingNotification();
+        }
+        
+        function showSet2StartingNotification() {
+            // Create a temporary notification overlay with countdown
+            const notification = document.createElement('div');
+            notification.style.position = 'absolute';
+            notification.style.top = '50%';
+            notification.style.left = '50%';
+            notification.style.transform = 'translate(-50%, -50%)';
+            notification.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            notification.style.color = 'white';
+            notification.style.padding = '30px 50px';
+            notification.style.borderRadius = '15px';
+            notification.style.textAlign = 'center';
+            notification.style.zIndex = '1000';
+            
+            // Add animation style
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fadeInOut {
+                    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+                    20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                    80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                    100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
+                }
+                
+                @keyframes countdownPulse {
+                    0% { transform: scale(1); }
+                    50% { transform: scale(1.5); }
+                    100% { transform: scale(1); }
+                }
+                
+                .countdown-number {
+                    font-size: 72px;
+                    font-weight: bold;
+                    color: #FFD700;
+                    display: inline-block;
+                    animation: countdownPulse 1s ease-in-out;
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Set 2 starting text
+            const set2Text = document.createElement('h1');
+            set2Text.textContent = 'SET 2 STARTING';
+            set2Text.style.color = '#4CAF50'; // Green color
+            set2Text.style.fontSize = '36px';
+            set2Text.style.marginBottom = '10px';
+            notification.appendChild(set2Text);
+            
+            // Countdown container
+            const countdownContainer = document.createElement('div');
+            countdownContainer.style.marginTop = '20px';
+            countdownContainer.style.marginBottom = '20px';
+            countdownContainer.style.height = '80px'; // Fixed height to prevent layout shifts
+            notification.appendChild(countdownContainer);
+            
+            // Add to body
+            document.body.appendChild(notification);
+            
+            // Start countdown from 3
+            let count = 3;
+            
+            function updateCountdown() {
+                // Clear previous content
+                countdownContainer.innerHTML = '';
+                
+                if (count > 0) {
+                    // Show current number
+                    const countdownNumber = document.createElement('div');
+                    countdownNumber.textContent = count;
+                    countdownNumber.className = 'countdown-number';
+                    countdownContainer.appendChild(countdownNumber);
+                    
+                    // Decrement and schedule next update
+                    count--;
+                    setTimeout(updateCountdown, 1000);
+                } else {
+                    // Show 'GO!' text
+                    const goText = document.createElement('div');
+                    goText.textContent = 'GO!';
+                    goText.className = 'countdown-number';
+                    goText.style.color = '#4CAF50'; // Green color
+                    countdownContainer.appendChild(goText);
+                    
+                    // Remove notification after a short delay
+                    setTimeout(() => {
+                        document.body.removeChild(notification);
+                        document.head.removeChild(style);
+                    }, 1000);
+                }
+            }
+            
+            // Start the countdown
+            updateCountdown();
+        }
+        
+        function handleMatchResults(data) {
+            console.log('Match results received:', data);
+            
+            // Save set 1 and set 2 scores
+            const myId = playerId;
+            const theOpponentId = Object.keys(data.matchState.set2Scores).find(id => id !== myId);
+            
+            // Make sure we have set 1 scores
+            if (!set1Score.player || !set1Score.opponent) {
+                console.log('Setting set 1 scores from match results');
+                set1Score.player = data.matchState.set1Scores[myId] || 0;
+                set1Score.opponent = data.matchState.set1Scores[theOpponentId] || 0;
+            }
+            
+            // Set 2 scores
+            set2Score.player = data.matchState.set2Scores[myId] || 0;
+            set2Score.opponent = data.matchState.set2Scores[theOpponentId] || 0;
+            
+            console.log('Final scores - Set 1:', set1Score, 'Set 2:', set2Score);
+            
+            // Stop the game
+            currentGameState = GAME_STATE.PAUSED;
+            
+            // Clear any existing timers
+            if (matchTimer) {
+                clearInterval(matchTimer);
+                matchTimer = null;
+            }
+            
+            // Show match results
+            showMatchResults();
+        }
+        
+        function showRestPeriodMessage() {
+            console.log('Showing rest period message');
+            // Create rest period overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'restPeriodOverlay';
+            overlay.style.position = 'absolute';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            overlay.style.color = 'white';
+            overlay.style.display = 'flex';
+            overlay.style.flexDirection = 'column';
+            overlay.style.justifyContent = 'center';
+            overlay.style.alignItems = 'center';
+            overlay.style.zIndex = '1000';
+            overlay.style.fontFamily = 'Arial, sans-serif';
+            
+            // Set 1 Complete notification
+            const setCompleteNotice = document.createElement('h1');
+            setCompleteNotice.textContent = 'SET 1 COMPLETE';
+            setCompleteNotice.style.color = '#FF8C00'; // Orange color
+            setCompleteNotice.style.fontSize = '36px';
+            setCompleteNotice.style.marginBottom = '20px';
+            overlay.appendChild(setCompleteNotice);
+            
+            // Time to relax message
+            const relaxMessage = document.createElement('h3');
+            relaxMessage.textContent = 'Time to relax!';
+            relaxMessage.style.marginBottom = '20px';
+            overlay.appendChild(relaxMessage);
+            
+            // Set 1 results
+            const set1Results = document.createElement('h2');
+            set1Results.textContent = `${playerName} ${set1Score.player} - ${set1Score.opponent} ${opponentName}`;
+            set1Results.style.fontSize = '28px';
+            set1Results.style.marginBottom = '30px';
+            overlay.appendChild(set1Results);
+            
+            // Rest timer with larger font
+            const timerDisplay = document.createElement('h2');
+            timerDisplay.id = 'restTimer';
+            timerDisplay.textContent = `Next set starts in: ${formatTime(restTimeRemaining)}`;
+            timerDisplay.style.marginBottom = '20px';
+            overlay.appendChild(timerDisplay);
+            
+            // Progress bar container
+            const progressContainer = document.createElement('div');
+            progressContainer.style.width = '80%';
+            progressContainer.style.height = '15px';
+            progressContainer.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+            progressContainer.style.borderRadius = '10px';
+            progressContainer.style.marginBottom = '30px';
+            overlay.appendChild(progressContainer);
+            
+            // Progress bar
+            const progressBar = document.createElement('div');
+            progressBar.id = 'restProgressBar';
+            progressBar.style.width = '100%';
+            progressBar.style.height = '100%';
+            progressBar.style.backgroundColor = '#3498db';
+            progressBar.style.borderRadius = '10px';
+            progressBar.style.transition = 'width 1s linear';
+            progressContainer.appendChild(progressBar);
+            
+            // Side switch notification
+            const switchSides = document.createElement('h3');
+            switchSides.textContent = 'SIDES WILL SWITCH';
+            switchSides.style.color = '#FF9800'; // Orange color
+            switchSides.style.marginBottom = '10px';
+            overlay.appendChild(switchSides);
+            
+            // New side notification
+            const newSide = document.createElement('p');
+            const nextSide = playerSide === 'left' ? 'right' : 'left';
+            newSide.textContent = `You will play on the ${nextSide} side for Set 2`;
+            overlay.appendChild(newSide);
+            
+            // Add to body
+            document.body.appendChild(overlay);
+            
+            // Update rest timer and progress bar
+            const restTimerInterval = setInterval(() => {
+                const timerElement = document.getElementById('restTimer');
+                const progressBar = document.getElementById('restProgressBar');
+                
+                if (timerElement) {
+                    timerElement.textContent = `Next set starts in: ${formatTime(restTimeRemaining)}`;
+                }
+                
+                if (progressBar) {
+                    const progressPercent = (restTimeRemaining / 30) * 100;
+                    progressBar.style.width = `${progressPercent}%`;
+                }
+                
+                if (restTimeRemaining <= 0 || !isRestPeriod) {
+                    clearInterval(restTimerInterval);
+                }
+            }, 1000);
+        }
+        
+        function showMatchResults() {
+            // Stop the game loop
+            currentGameState = GAME_STATE.MENU;
+            
+            // Create match results overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'matchResultsOverlay';
+            overlay.style.position = 'absolute';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+            overlay.style.color = 'white';
+            overlay.style.display = 'flex';
+            overlay.style.flexDirection = 'column';
+            overlay.style.justifyContent = 'center';
+            overlay.style.alignItems = 'center';
+            overlay.style.zIndex = '1000';
+            overlay.style.fontFamily = 'Arial, sans-serif';
+            
+            // Game over header
+            const gameOverHeader = document.createElement('h1');
+            gameOverHeader.textContent = 'GAME OVER';
+            gameOverHeader.style.fontSize = '42px';
+            gameOverHeader.style.color = '#FF8C00'; // Orange color
+            gameOverHeader.style.marginBottom = '30px';
+            gameOverHeader.style.textShadow = '0 0 10px rgba(255, 140, 0, 0.5)';
+            overlay.appendChild(gameOverHeader);
+            
+            // Results container
+            const resultsContainer = document.createElement('div');
+            resultsContainer.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+            resultsContainer.style.padding = '25px 40px';
+            resultsContainer.style.borderRadius = '15px';
+            resultsContainer.style.marginBottom = '30px';
+            resultsContainer.style.width = '80%';
+            resultsContainer.style.maxWidth = '600px';
+            
+            // Match results header
+            const resultsHeader = document.createElement('h2');
+            resultsHeader.textContent = 'Match Results';
+            resultsHeader.style.textAlign = 'center';
+            resultsHeader.style.marginBottom = '20px';
+            resultsHeader.style.borderBottom = '1px solid rgba(255, 255, 255, 0.3)';
+            resultsHeader.style.paddingBottom = '10px';
+            resultsContainer.appendChild(resultsHeader);
+            
+            // Set results table
+            const resultsTable = document.createElement('table');
+            resultsTable.style.width = '100%';
+            resultsTable.style.borderCollapse = 'collapse';
+            resultsTable.style.marginBottom = '20px';
+            
+            // Table header
+            const tableHeader = document.createElement('tr');
+            tableHeader.innerHTML = `
+                <th style="text-align: left; padding: 8px;">Set</th>
+                <th style="text-align: center; padding: 8px;">${playerName}</th>
+                <th style="text-align: center; padding: 8px;">-</th>
+                <th style="text-align: center; padding: 8px;">${opponentName}</th>
+            `;
+            resultsTable.appendChild(tableHeader);
+            
+            // Set 1 row
+            const set1Row = document.createElement('tr');
+            set1Row.innerHTML = `
+                <td style="text-align: left; padding: 8px;">Set 1</td>
+                <td style="text-align: center; padding: 8px;">${set1Score.player}</td>
+                <td style="text-align: center; padding: 8px;">-</td>
+                <td style="text-align: center; padding: 8px;">${set1Score.opponent}</td>
+            `;
+            resultsTable.appendChild(set1Row);
+            
+            // Set 2 row
+            const set2Row = document.createElement('tr');
+            set2Row.innerHTML = `
+                <td style="text-align: left; padding: 8px;">Set 2</td>
+                <td style="text-align: center; padding: 8px;">${set2Score.player}</td>
+                <td style="text-align: center; padding: 8px;">-</td>
+                <td style="text-align: center; padding: 8px;">${set2Score.opponent}</td>
+            `;
+            resultsTable.appendChild(set2Row);
+            
+            // Total score row
+            const totalPlayerScore = set1Score.player + set2Score.player;
+            const totalOpponentScore = set1Score.opponent + set2Score.opponent;
+            
+            const totalRow = document.createElement('tr');
+            totalRow.style.borderTop = '1px solid rgba(255, 255, 255, 0.3)';
+            totalRow.style.fontWeight = 'bold';
+            totalRow.innerHTML = `
+                <td style="text-align: left; padding: 8px;">TOTAL</td>
+                <td style="text-align: center; padding: 8px;">${totalPlayerScore}</td>
+                <td style="text-align: center; padding: 8px;">-</td>
+                <td style="text-align: center; padding: 8px;">${totalOpponentScore}</td>
+            `;
+            resultsTable.appendChild(totalRow);
+            
+            resultsContainer.appendChild(resultsTable);
+            overlay.appendChild(resultsContainer);
+            
+            // Winner announcement container
+            const winnerContainer = document.createElement('div');
+            winnerContainer.style.marginTop = '20px';
+            winnerContainer.style.padding = '15px 30px';
+            winnerContainer.style.borderRadius = '10px';
+            winnerContainer.style.textAlign = 'center';
+            
+            // Winner announcement
+            const winnerAnnouncement = document.createElement('h1');
+            winnerAnnouncement.style.fontSize = '36px';
+            winnerAnnouncement.style.textShadow = '0 0 10px rgba(255, 215, 0, 0.7)';
+            
+            if (totalPlayerScore > totalOpponentScore) {
+                winnerAnnouncement.textContent = `${playerName} WINS!`;
+                winnerAnnouncement.style.color = '#FF8C00'; // Orange color
+                winnerContainer.style.backgroundColor = 'rgba(255, 140, 0, 0.2)';
+                winnerContainer.style.border = '2px solid rgba(255, 140, 0, 0.5)';
+            } else if (totalOpponentScore > totalPlayerScore) {
+                winnerAnnouncement.textContent = `${opponentName} WINS!`;
+                winnerAnnouncement.style.color = '#FFFFFF'; // White color
+                winnerContainer.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                winnerContainer.style.border = '2px solid rgba(255, 255, 255, 0.5)';
+            } else {
+                winnerAnnouncement.textContent = `IT'S A TIE!`;
+                winnerAnnouncement.style.color = '#FF8C00'; // Orange color
+                winnerContainer.style.backgroundColor = 'rgba(255, 140, 0, 0.2)';
+                winnerContainer.style.border = '2px solid rgba(255, 140, 0, 0.5)';
+            }
+            winnerContainer.appendChild(winnerAnnouncement);
+            overlay.appendChild(winnerContainer);
+            
+            // Button container
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.marginTop = '40px';
+            buttonContainer.style.display = 'flex';
+            buttonContainer.style.justifyContent = 'center';
+            buttonContainer.style.gap = '20px';
+            
+            // Return to menu button
+            const menuButton = document.createElement('button');
+            menuButton.textContent = 'Return to Menu';
+            menuButton.style.padding = '12px 25px';
+            menuButton.style.fontSize = '18px';
+            menuButton.style.cursor = 'pointer';
+            menuButton.style.backgroundColor = '#000';
+            menuButton.style.color = 'white';
+            menuButton.style.border = '2px solid #FF8C00'; // Orange border
+            menuButton.style.borderRadius = '5px';
+            menuButton.style.transition = 'all 0.3s ease';
+            menuButton.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+            menuButton.addEventListener('mouseover', () => {
+                menuButton.style.backgroundColor = '#FF8C00'; // Orange on hover
+                menuButton.style.color = '#000'; // Black text on hover
+                menuButton.style.transform = 'scale(1.05)';
+            });
+            menuButton.addEventListener('mouseout', () => {
+                menuButton.style.backgroundColor = '#000'; // Back to black
+                menuButton.style.color = '#fff'; // Back to white text
+                menuButton.style.transform = 'translateY(0)';
+                menuButton.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+            });
+            menuButton.onclick = () => {
+                // Clean up any remaining game state
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.close();
+                }
+                
+                // Clear any timers
+                if (matchTimer) {
+                    clearInterval(matchTimer);
+                    matchTimer = null;
+                }
+                
+                // Reset game state
+                currentGameState = GAME_STATE.MENU;
+                currentGameMode = null;
+                
+                // Remove overlay and show menu
+                document.body.removeChild(overlay);
+                showMainMenu();
+            };
+            buttonContainer.appendChild(menuButton);
+            
+            // Play again button
+            const playAgainButton = document.createElement('button');
+            playAgainButton.textContent = 'Play Again';
+            playAgainButton.style.padding = '12px 25px';
+            playAgainButton.style.fontSize = '18px';
+            playAgainButton.style.cursor = 'pointer';
+            playAgainButton.style.backgroundColor = '#2ecc71';
+            playAgainButton.style.color = 'white';
+            playAgainButton.style.border = 'none';
+            playAgainButton.style.borderRadius = '5px';
+            playAgainButton.style.transition = 'all 0.3s ease';
+            playAgainButton.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+            playAgainButton.onmouseover = () => {
+                playAgainButton.style.backgroundColor = '#27ae60';
+                playAgainButton.style.transform = 'translateY(-2px)';
+                playAgainButton.style.boxShadow = '0 6px 8px rgba(0, 0, 0, 0.15)';
+            };
+            playAgainButton.onmouseout = () => {
+                playAgainButton.style.backgroundColor = '#2ecc71';
+                playAgainButton.style.transform = 'translateY(0)';
+                playAgainButton.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+            };
+            playAgainButton.onclick = () => {
+                // Clean up any remaining game state
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.close();
+                }
+                
+                // Clear any timers
+                if (matchTimer) {
+                    clearInterval(matchTimer);
+                    matchTimer = null;
+                }
+                
+                // Remove overlay and start a new online game
+                document.body.removeChild(overlay);
+                startOnlineGame();
+            };
+            buttonContainer.appendChild(playAgainButton);
+            
+            overlay.appendChild(buttonContainer);
+            
+            // Share score section
+            const shareSection = document.createElement('div');
+            shareSection.style.marginTop = '30px';
+            shareSection.style.textAlign = 'center';
+            
+            const shareText = document.createElement('p');
+            shareText.textContent = 'Share your score:';
+            shareText.style.fontSize = '18px';
+            shareText.style.marginBottom = '15px';
+            shareSection.appendChild(shareText);
+            
+            // Share buttons container
+            const shareButtons = document.createElement('div');
+            shareButtons.style.display = 'flex';
+            shareButtons.style.justifyContent = 'center';
+            shareButtons.style.gap = '15px';
+            
+            // Create share buttons for different platforms
+            const platforms = [
+                { name: 'Twitter', icon: '🐦', color: '#1DA1F2' },
+                { name: 'Facebook', icon: '📘', color: '#4267B2' },
+                { name: 'WhatsApp', icon: '📱', color: '#25D366' },
+                { name: 'Copy Link', icon: '🔗', color: '#FF8C00' }
+            ];
+            
+            platforms.forEach(platform => {
+                const button = document.createElement('button');
+                button.innerHTML = `${platform.icon} ${platform.name}`;
+                button.style.padding = '10px 15px';
+                button.style.backgroundColor = '#000';
+                button.style.color = 'white';
+                button.style.border = `2px solid ${platform.color}`;
+                button.style.borderRadius = '5px';
+                button.style.cursor = 'pointer';
+                button.style.fontSize = '16px';
+                button.style.transition = 'all 0.3s ease';
+                
+                button.addEventListener('mouseover', () => {
+                    button.style.backgroundColor = platform.color;
+                    button.style.transform = 'scale(1.05)';
+                });
+                
+                button.addEventListener('mouseout', () => {
+                    button.style.backgroundColor = '#000';
+                    button.style.transform = 'scale(1)';
+                });
+                
+                button.addEventListener('click', () => {
+                    let shareText = '';
+                    
+                    if (totalPlayerScore > totalOpponentScore) {
+                        shareText = `I just DEFEATED ${opponentName} in a PvP match of Sign Pong with a score of ${totalPlayerScore}-${totalOpponentScore}! Who wants to challenge me next?`;
+                    } else if (totalOpponentScore > totalPlayerScore) {
+                        shareText = `I just LOST to ${opponentName} in a PvP match of Sign Pong with a score of ${totalPlayerScore}-${totalOpponentScore}. I need a rematch! Who wants to play?`;
+                    } else {
+                        shareText = `I just TIED with ${opponentName} in an intense PvP match of Sign Pong! Final score: ${totalPlayerScore}-${totalOpponentScore}. Who can break this deadlock?`;
+                    }
+                    // Use a public URL instead of localhost for sharing
+                    const shareUrl = "https://signpong.com"; // Replace with actual public URL when deployed
+                    
+                    let shareLink = '';
+                    
+                    switch(platform.name) {
+                        case 'Twitter':
+                            shareLink = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+                            window.open(shareLink, '_blank');
+                            break;
+                        case 'Facebook':
+                            shareLink = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`;
+                            window.open(shareLink, '_blank');
+                            break;
+                        case 'WhatsApp':
+                            shareLink = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`;
+                            window.open(shareLink, '_blank');
+                            break;
+                        case 'Copy Link':
+                            // Create a temporary textarea to copy the text
+                            const textarea = document.createElement('textarea');
+                            textarea.value = `${shareText} ${shareUrl}`;
+                            document.body.appendChild(textarea);
+                            textarea.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(textarea);
+                            
+                            // Show copied notification
+                            const notification = document.createElement('div');
+                            notification.textContent = 'Score copied to clipboard!';
+                            notification.style.position = 'fixed';
+                            notification.style.bottom = '20px';
+                            notification.style.left = '50%';
+                            notification.style.transform = 'translateX(-50%)';
+                            notification.style.backgroundColor = '#FF8C00';
+                            notification.style.color = '#000';
+                            notification.style.padding = '10px 20px';
+                            notification.style.borderRadius = '5px';
+                            notification.style.zIndex = '2000';
+                            document.body.appendChild(notification);
+                            
+                            // Remove notification after 3 seconds
+                            setTimeout(() => {
+                                document.body.removeChild(notification);
+                            }, 3000);
+                            break;
+                    }
+                });
+                
+                shareButtons.appendChild(button);
+            });
+            
+            shareSection.appendChild(shareButtons);
+            overlay.appendChild(shareSection);
+            
+            document.body.appendChild(overlay);
+        }
+        
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+        
+        function drawScores() {
+            // Draw main scores with appropriate labels based on game mode
+            ctx.font = '24px Arial';
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            
+            if (currentGameMode === GAME_MODE.PVE) {
+                ctx.fillText(`Player: ${playerScore}  |  Computer: ${computerScore}`, canvas.width / 2, 30);
+            } else if (currentGameMode === GAME_MODE.ONLINE) {
+                // Show current set and time remaining
+                if (!isRestPeriod) {
+                    ctx.fillText(`Set ${currentSet}: ${playerName} ${playerScore} - ${computerScore} ${opponentName}    Time: ${formatTime(matchTimeRemaining)}`, canvas.width / 2, 30);
+                    
+                    // If in set 2, also show the total scores
+                    if (currentSet === 2) {
+                        ctx.font = '18px Arial';
+                        const totalPlayerScore = set1Score.player + playerScore;
+                        const totalOpponentScore = set1Score.opponent + computerScore;
+                        
+                        // Determine who's leading and show with color
+                        let totalScoreText = `Total: ${playerName} ${totalPlayerScore} - ${totalOpponentScore} ${opponentName}`;
+                        
+                        // Draw a background for the total score
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                        ctx.fillRect(canvas.width/2 - 250, 45, 500, 25);
+                        
+                        // Set text color based on who's leading
+                        if (totalPlayerScore > totalOpponentScore) {
+                            ctx.fillStyle = '#FF8C00'; // Orange for player leading
+                        } else if (totalOpponentScore > totalPlayerScore) {
+                            ctx.fillStyle = '#000'; // Black for opponent leading
+                        } else {
+                            ctx.fillStyle = '#fff'; // White for tie
+                        }
+                        
+                        ctx.fillText(totalScoreText, canvas.width / 2, 60);
+                        ctx.fillStyle = 'white'; // Reset fill style
+                    }
+                }
+            }
+            
+            // Draw game mode
+            ctx.font = '14px Arial';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.textAlign = 'right';
+            
+            let modeText = '';
+            switch(currentGameMode) {
+                case GAME_MODE.PVE: modeText = 'Player vs Computer'; break;
+                case GAME_MODE.PVP: modeText = 'Local Multiplayer'; break;
+                case GAME_MODE.ONLINE: modeText = 'Online Multiplayer'; break;
+            }
+            ctx.fillText(`Mode: ${modeText}`, canvas.width - 10, 20);
+            
+            // Only show difficulty in PvE mode
+            if (currentGameMode === GAME_MODE.PVE) {
+                ctx.fillText(`Difficulty: Level ${difficultyLevel}`, canvas.width - 10, 40);
+            }
+            
+            // Draw paddle size info
+            ctx.font = '14px Arial';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.textAlign = 'right';
+            ctx.fillText(`Paddle Size: ${paddleHeight}px`, canvas.width - 10, 60);
+            
+            // Draw controls info based on mode
+            ctx.font = '14px Arial';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.textAlign = 'left';
+            
+            if (currentGameMode === GAME_MODE.PVE) {
+                ctx.fillText('Controls: Mouse', 10, 20);
+            } else if (currentGameMode === GAME_MODE.PVP) {
+                ctx.fillText('P1: W/S keys | P2: ↑/↓ arrows', 10, 20);
+            } else if (currentGameMode === GAME_MODE.ONLINE) {
+                ctx.fillText('Controls: W/S or ↑/↓ arrows', 10, 20);
+                
+                // Show connection status
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    ctx.fillStyle = 'rgba(46, 204, 113, 0.7)'; // Green
+                    ctx.fillText('● Connected', 10, 40);
+                } else {
+                    ctx.fillStyle = 'rgba(231, 76, 60, 0.7)'; // Red
+                    ctx.fillText('● Disconnected', 10, 40);
+                }
+            }
+            
+            // Draw rally info if playing
+            if (currentGameState === GAME_STATE.PLAYING) {
+                const rallySpeedMultiplier = 1 + Math.min(
+                    maxSpeedIncrease - 1,
+                    (totalHits / speedIncreaseInterval) * 0.1
+                );
+                
+                ctx.font = '14px Arial';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.textAlign = 'left';
+                ctx.fillText(`Rally: ${totalHits} | Speed: ${rallySpeedMultiplier.toFixed(1)}x`, 10, canvas.height - 10);
+            }
+        }
+
+        // Move computer paddle with human-like movement and precision
+        let aiFrameCounter = 0;
+        let lastPrediction = canvas.height / 2; // Default to center
+        let isTracking = false; // Flag to track if AI is actively tracking the ball
+        
+        function moveComputerPaddle() {
+            // Only move when the ball is actually in play
+            if (Math.abs(ball.speedX) < 0.1 && Math.abs(ball.speedY) < 0.1) {
+                return; // Ball is not moving, don't make unnecessary movements
+            }
+            
+            // Determine if the ball is moving toward the computer paddle
+            const ballMovingTowardPaddle = ball.speedX > 0;
+            
+            // Calculate paddle center position
+            const paddleCenter = computerPaddle.y + paddleHeight / 2;
+            
+            // Human-like decision making: only track the ball when it's moving toward the paddle
+            // or when it's just been hit by the player (realistic anticipation)
+            if (ballMovingTowardPaddle) {
+                isTracking = true;
+                
+                // Calculate time until ball reaches paddle with proper physics
+                const distanceToTravel = computerPaddle.x - ball.x;
+                const timeToReach = distanceToTravel / ball.speedX;
+                
+                if (timeToReach > 0) {
+                    // Physics-based prediction with exact bounce calculation
+                    let predictedY = ball.y;
+                    let tempY = ball.y;
+                    let tempSpeedY = ball.speedY;
+                    let tempTime = 0;
+                    
+                    // Simulate ball path with precise physics
+                    while (tempTime < timeToReach) {
+                        // Calculate time to next wall collision
+                        const timeToTopWall = tempSpeedY < 0 ? (ball.radius - tempY) / tempSpeedY : Infinity;
+                        const timeToBottomWall = tempSpeedY > 0 ? (canvas.height - ball.radius - tempY) / tempSpeedY : Infinity;
+                        const timeToNextWall = Math.min(timeToTopWall, timeToBottomWall);
+                        
+                        // If no wall collision before reaching paddle
+                        if (tempTime + timeToNextWall > timeToReach) {
+                            // Final position calculation
+                            tempY += tempSpeedY * (timeToReach - tempTime);
+                            break;
+                        }
+                        
+                        // Update after wall collision
+                        tempTime += timeToNextWall;
+                        tempY += tempSpeedY * timeToNextWall;
+                        tempSpeedY = -tempSpeedY; // Bounce physics
+                    }
+                    
+                    predictedY = tempY;
+                    
+                    // Human-like precision based on difficulty
+                    // Even at high difficulties, humans make small errors
+                    const humanErrorFactor = Math.max(0.02, 0.15 - (difficultyLevel * 0.012));
+                    const maxError = canvas.height * humanErrorFactor;
+                    const humanError = (Math.random() * maxError) - (maxError / 2);
+                    
+                    // Apply human-like error to prediction
+                    predictedY += humanError;
+                    
+                    // Human reaction delay based on difficulty
+                    // Even pros have some reaction time
+                    const baseReactionDelay = Math.max(1, 12 - difficultyLevel);
+                    const variableDelay = Math.random() * baseReactionDelay * 0.5;
+                    const reactionDelay = baseReactionDelay + variableDelay;
+                    
+                    // Only update prediction after reaction delay
+                    aiFrameCounter++;
+                    if (aiFrameCounter >= reactionDelay) {
+                        lastPrediction = predictedY;
+                        aiFrameCounter = 0;
+                    }
+                }
+            } else if (isTracking) {
+                // Human-like behavior: continue briefly tracking after ball changes direction
+                // then gradually lose interest if ball is moving away
+                aiFrameCounter++;
+                if (aiFrameCounter > 15) { // Stop actively tracking after a short time
+                    isTracking = false;
+                    aiFrameCounter = 0;
+                }
+            }
+            
+            // Human-like movement: accelerate and decelerate naturally
+            const targetY = lastPrediction;
+            const distanceToTarget = targetY - paddleCenter;
+            
+            // Only move if the target is significantly different from current position
+            // Humans don't make tiny micro-adjustments
+            if (Math.abs(distanceToTarget) > 5) {
+                // Calculate human-like movement with acceleration/deceleration
+                const direction = Math.sign(distanceToTarget);
+                
+                // Base speed on difficulty and distance
+                let baseSpeed = computerPaddle.speed * (0.5 + (difficultyLevel * 0.05));
+                
+                // Human-like acceleration curve
+                const distanceRatio = Math.min(1, Math.abs(distanceToTarget) / 100);
+                const accelerationFactor = Math.sin(distanceRatio * Math.PI / 2); // Natural acceleration curve
+                
+                // Apply movement with natural acceleration/deceleration
+                const moveAmount = baseSpeed * accelerationFactor * gameSpeedMultiplier;
+                computerPaddle.y += direction * moveAmount;
+                
+                // Ensure paddle stays within canvas bounds
+                computerPaddle.y = Math.max(0, Math.min(computerPaddle.y, canvas.height - paddleHeight));
+            }
+        }
+
+        // Ball collision detection
+        function checkCollision() {
+            // Top and bottom wall collision
+            if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) {
+                ball.speedY = -ball.speedY;
+            }
+
+            // Check for paddle collisions based on player side
+            checkPaddleCollision(playerPaddle, true);
+            checkPaddleCollision(computerPaddle, false);
+        }
+        
+        // Helper function to check paddle collisions with side awareness
+        function checkPaddleCollision(paddle, isPlayerPaddle) {
+            // Determine if this is a left or right paddle
+            const isLeftPaddle = paddle.x < canvas.width / 2;
+            
+            // Check for collision with the appropriate side of the ball
+            if (isLeftPaddle) {
+                // Left paddle collision
+                if (
+                    ball.x - ball.radius < paddle.x + paddleWidth &&
+                    ball.x > paddle.x &&
+                    ball.y > paddle.y - paddleHeight/6 && 
+                    ball.y < paddle.y + paddleHeight + paddleHeight/6
+                ) {
+                    // Ball hit left paddle, move right
+                    ball.speedX = Math.abs(ball.speedX);
+                    
+                    // Calculate impact point on paddle (0 = top, 1 = bottom)
+                    const impactPoint = (ball.y - paddle.y) / paddleHeight;
+                    
+                    // Change angle based on where ball hits paddle
+                    ball.speedY = 10 * (impactPoint - 0.5);
+                    
+                    // Increment hit counter and update speed
+                    totalHits++;
+                    updateBallSpeed();
+                }
+            } else {
+                // Right paddle collision
+                if (
+                    ball.x + ball.radius > paddle.x &&
+                    ball.x < paddle.x + paddleWidth &&
+                    ball.y > paddle.y - paddleHeight/6 && 
+                    ball.y < paddle.y + paddleHeight + paddleHeight/6
+                ) {
+                    // Ball hit right paddle, move left
+                    ball.speedX = -Math.abs(ball.speedX);
+                    
+                    // Calculate impact point on paddle (0 = top, 1 = bottom)
+                    const impactPoint = (ball.y - paddle.y) / paddleHeight;
+                    
+                    // Change angle based on where ball hits paddle
+                    ball.speedY = 10 * (impactPoint - 0.5);
+                    
+                    // Ensure speed doesn't exceed maximum
+                    const currentSpeed = Math.sqrt(ball.speedX * ball.speedX + ball.speedY * ball.speedY);
+                    if (currentSpeed > ball.maxSpeed) {
+                        const ratio = ball.maxSpeed / currentSpeed;
+                        ball.speedX *= ratio;
+                        ball.speedY *= ratio;
+                    }
+                    
+                    // Increment hit counter and update speed
+                    totalHits++;
+                    updateBallSpeed();
+                }
+            }
+        }
+
+        // Scoring logic with side awareness
+        function checkScoring() {
+            // Left side scoring
+            if (ball.x < 0) {
+                // Determine who scored based on player side
+                let scoringPlayerId;
+                
+                if (playerSide === 'left') {
+                    // Ball went out on left side, opponent scores
+                    computerScore++;
+                    scoringPlayerId = opponentId;
+                } else {
+                    // Ball went out on left side, player scores
+                    playerScore++;
+                    scoringPlayerId = playerId;
+                }
+                
+                // Reset the ball
+                resetBall();
+                
+                // In online mode, send a player_scored message to the server
+                if (currentGameMode === GAME_MODE.ONLINE && socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'player_scored',
+                        scoringPlayer: scoringPlayerId
+                    }));
+                }
+            } 
+            // Right side scoring
+            else if (ball.x > canvas.width) {
+                // Determine who scored based on player side
+                let scoringPlayerId;
+                
+                if (playerSide === 'right') {
+                    // Ball went out on right side, opponent scores
+                    computerScore++;
+                    scoringPlayerId = opponentId;
+                } else {
+                    // Ball went out on right side, player scores
+                    playerScore++;
+                    scoringPlayerId = playerId;
+                }
+                
+                // Reset the ball
+                resetBall();
+                
+                // In online mode, send a player_scored message to the server
+                if (currentGameMode === GAME_MODE.ONLINE && socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'player_scored',
+                        scoringPlayer: scoringPlayerId
+                    }));
+                }
+            }
+        }
+
+        // Check for winner in single player mode
+        function checkForWinner() {
+            if (currentGameMode === GAME_MODE.PVE) {
+                if (playerScore >= SCORE_LIMIT || computerScore >= SCORE_LIMIT) {
+                    // Game over - show winner screen
+                    showSinglePlayerGameOver();
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // Show game over screen for single player mode
+        function showSinglePlayerGameOver() {
+            // Pause the game
+            currentGameState = GAME_STATE.GAME_OVER;
+            
+            // Create game over overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'gameOverOverlay';
+            overlay.style.position = 'absolute';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            overlay.style.color = 'white';
+            overlay.style.display = 'flex';
+            overlay.style.flexDirection = 'column';
+            overlay.style.justifyContent = 'center';
+            overlay.style.alignItems = 'center';
+            overlay.style.zIndex = '1000';
+            overlay.style.fontFamily = 'Arial, sans-serif';
+            
+            // Game over header
+            const gameOverHeader = document.createElement('h1');
+            gameOverHeader.textContent = 'GAME OVER';
+            gameOverHeader.style.fontSize = '42px';
+            gameOverHeader.style.color = '#FF8C00'; // Orange color
+            gameOverHeader.style.marginBottom = '30px';
+            gameOverHeader.style.textShadow = '0 0 10px rgba(255, 140, 0, 0.5)';
+            overlay.appendChild(gameOverHeader);
+            
+            // Winner announcement
+            const winnerAnnouncement = document.createElement('h2');
+            if (playerScore > computerScore) {
+                winnerAnnouncement.textContent = 'YOU WIN!';
+                winnerAnnouncement.style.color = '#FF8C00'; // Orange for player win
+            } else {
+                winnerAnnouncement.textContent = 'COMPUTER WINS!';
+                winnerAnnouncement.style.color = '#FFFFFF'; // White for computer win
+            }
+            winnerAnnouncement.style.fontSize = '36px';
+            winnerAnnouncement.style.marginBottom = '20px';
+            overlay.appendChild(winnerAnnouncement);
+            
+            // Final score
+            const finalScore = document.createElement('h3');
+            finalScore.textContent = `Final Score: ${playerScore} - ${computerScore}`;
+            finalScore.style.fontSize = '24px';
+            finalScore.style.marginBottom = '40px';
+            overlay.appendChild(finalScore);
+            
+            // Button container
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.display = 'flex';
+            buttonContainer.style.gap = '20px';
+            
+            // Play again button
+            const playAgainButton = document.createElement('button');
+            playAgainButton.textContent = 'Play Again';
+            playAgainButton.style.padding = '12px 25px';
+            playAgainButton.style.fontSize = '18px';
+            playAgainButton.style.cursor = 'pointer';
+            playAgainButton.style.backgroundColor = '#000';
+            playAgainButton.style.color = 'white';
+            playAgainButton.style.border = '2px solid #FF8C00'; // Orange border
+            playAgainButton.style.borderRadius = '5px';
+            playAgainButton.style.transition = 'all 0.3s ease';
+            
+            playAgainButton.addEventListener('mouseover', () => {
+                playAgainButton.style.backgroundColor = '#FF8C00'; // Orange on hover
+                playAgainButton.style.color = '#000'; // Black text on hover
+                playAgainButton.style.transform = 'scale(1.05)';
+            });
+            
+            playAgainButton.addEventListener('mouseout', () => {
+                playAgainButton.style.backgroundColor = '#000'; // Back to black
+                playAgainButton.style.color = '#fff'; // Back to white text
+                playAgainButton.style.transform = 'translateY(0)';
+            });
+            
+            playAgainButton.addEventListener('click', () => {
+                // Reset scores
+                playerScore = 0;
+                computerScore = 0;
+                
+                // Reset game state
+                currentGameState = GAME_STATE.PLAYING;
+                
+                // Reset ball
+                resetBall();
+                
+                // Remove overlay
+                document.body.removeChild(overlay);
+            });
+            
+            // Return to menu button
+            const menuButton = document.createElement('button');
+            menuButton.textContent = 'Return to Menu';
+            menuButton.style.padding = '12px 25px';
+            menuButton.style.fontSize = '18px';
+            menuButton.style.cursor = 'pointer';
+            menuButton.style.backgroundColor = '#000';
+            menuButton.style.color = 'white';
+            menuButton.style.border = '2px solid #FF8C00'; // Orange border
+            menuButton.style.borderRadius = '5px';
+            menuButton.style.transition = 'all 0.3s ease';
+            
+            menuButton.addEventListener('mouseover', () => {
+                menuButton.style.backgroundColor = '#FF8C00'; // Orange on hover
+                menuButton.style.color = '#000'; // Black text on hover
+                menuButton.style.transform = 'scale(1.05)';
+            });
+            
+            menuButton.addEventListener('mouseout', () => {
+                menuButton.style.backgroundColor = '#000'; // Back to black
+                menuButton.style.color = '#fff'; // Back to white text
+                menuButton.style.transform = 'translateY(0)';
+            });
+            
+            menuButton.addEventListener('click', () => {
+                // Reset scores
+                playerScore = 0;
+                computerScore = 0;
+                
+                // Reset game state
+                currentGameState = GAME_STATE.MENU;
+                
+                // Remove overlay
+                document.body.removeChild(overlay);
+                
+                // Show main menu
+                showMainMenu();
+            });
+            
+            buttonContainer.appendChild(playAgainButton);
+            buttonContainer.appendChild(menuButton);
+            overlay.appendChild(buttonContainer);
+            
+            // Share score section
+            const shareSection = document.createElement('div');
+            shareSection.style.marginTop = '30px';
+            shareSection.style.textAlign = 'center';
+            
+            const shareText = document.createElement('p');
+            shareText.textContent = 'Share your score:';
+            shareText.style.fontSize = '18px';
+            shareText.style.marginBottom = '15px';
+            shareSection.appendChild(shareText);
+            
+            // Share buttons container
+            const shareButtons = document.createElement('div');
+            shareButtons.style.display = 'flex';
+            shareButtons.style.justifyContent = 'center';
+            shareButtons.style.gap = '15px';
+            
+            // Create share buttons for different platforms
+            const platforms = [
+                { name: 'Twitter', icon: '🐦', color: '#1DA1F2' },
+                { name: 'Facebook', icon: '📘', color: '#4267B2' },
+                { name: 'WhatsApp', icon: '📱', color: '#25D366' },
+                { name: 'Copy Link', icon: '🔗', color: '#FF8C00' }
+            ];
+            
+            platforms.forEach(platform => {
+                const button = document.createElement('button');
+                button.innerHTML = `${platform.icon} ${platform.name}`;
+                button.style.padding = '10px 15px';
+                button.style.backgroundColor = '#000';
+                button.style.color = 'white';
+                button.style.border = `2px solid ${platform.color}`;
+                button.style.borderRadius = '5px';
+                button.style.cursor = 'pointer';
+                button.style.fontSize = '16px';
+                button.style.transition = 'all 0.3s ease';
+                
+                button.addEventListener('mouseover', () => {
+                    button.style.backgroundColor = platform.color;
+                    button.style.transform = 'scale(1.05)';
+                });
+                
+                button.addEventListener('mouseout', () => {
+                    button.style.backgroundColor = '#000';
+                    button.style.transform = 'scale(1)';
+                });
+                
+                button.addEventListener('click', () => {
+                    let shareText = '';
+                    if (playerScore > computerScore) {
+                        shareText = `I just WON a game of Sign Pong against AI with a score of ${playerScore}-${computerScore}! Can you beat me?`;
+                    } else {
+                        shareText = `I just LOST a game of Sign Pong against AI with a score of ${playerScore}-${computerScore}. Think you can do better?`;
+                    }
+                    // Use a public URL instead of localhost for sharing
+                    const shareUrl = "https://signpong.com"; // Replace with actual public URL when deployed
+                    
+                    let shareLink = '';
+                    
+                    switch(platform.name) {
+                        case 'Twitter':
+                            shareLink = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+                            window.open(shareLink, '_blank');
+                            break;
+                        case 'Facebook':
+                            shareLink = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`;
+                            window.open(shareLink, '_blank');
+                            break;
+                        case 'WhatsApp':
+                            shareLink = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`;
+                            window.open(shareLink, '_blank');
+                            break;
+                        case 'Copy Link':
+                            // Create a temporary textarea to copy the text
+                            const textarea = document.createElement('textarea');
+                            textarea.value = `${shareText} ${shareUrl}`;
+                            document.body.appendChild(textarea);
+                            textarea.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(textarea);
+                            
+                            // Show copied notification
+                            const notification = document.createElement('div');
+                            notification.textContent = 'Score copied to clipboard!';
+                            notification.style.position = 'fixed';
+                            notification.style.bottom = '20px';
+                            notification.style.left = '50%';
+                            notification.style.transform = 'translateX(-50%)';
+                            notification.style.backgroundColor = '#FF8C00';
+                            notification.style.color = '#000';
+                            notification.style.padding = '10px 20px';
+                            notification.style.borderRadius = '5px';
+                            notification.style.zIndex = '2000';
+                            document.body.appendChild(notification);
+                            
+                            // Remove notification after 3 seconds
+                            setTimeout(() => {
+                                document.body.removeChild(notification);
+                            }, 3000);
+                            break;
+                    }
+                });
+                
+                shareButtons.appendChild(button);
+            });
+            
+            shareSection.appendChild(shareButtons);
+            overlay.appendChild(shareSection);
+            
+            // Add overlay to the document
+            document.body.appendChild(overlay);
+        }
+        
+        // Reset ball to center
+        function resetBall() {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            
+            // Randomize direction but maintain consistent base speed
+            ball.baseSpeedX = 5;
+            ball.baseSpeedY = Math.random() > 0.5 ? 5 : -5;
+            
+            // Apply game speed multiplier
+            ball.speedX = ball.baseSpeedX * gameSpeedMultiplier * (Math.random() > 0.5 ? 1 : -1);
+            ball.speedY = ball.baseSpeedY * gameSpeedMultiplier;
+            
+            // Reset AI prediction
+            ball.lastPredictedY = ball.y;
+            aiFrameCounter = 0;
+            
+            // Reset hit counter on score (but not on game start)
+            if (currentGameState === GAME_STATE.PLAYING) {
+                totalHits = 0;
+                updateBallSpeed();
+            }
+        }
+
+        // Check if there's a winner in single player mode
+        function checkWinner() {
+            if (currentGameMode === GAME_MODE.PVE) {
+                if (playerScore >= SCORE_LIMIT || computerScore >= SCORE_LIMIT) {
+                    // Game over - show winner screen
+                    showSinglePlayerGameOver();
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // Game loop
+        function gameLoop() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (currentGameState === GAME_STATE.PLAYING) {
+                // Handle player controls (keyboard input)
+                handlePlayerControls();
+                
+                // Move ball in all game modes
+                ball.x += ball.speedX;
+                ball.y += ball.speedY;
+                
+                // Log ball movement in online mode for debugging
+                if (currentGameMode === GAME_MODE.ONLINE && ball.speedX !== 0 && ball.speedY !== 0) {
+                    console.log(`Ball moving: x=${ball.x.toFixed(1)}, y=${ball.y.toFixed(1)}, speedX=${ball.speedX.toFixed(1)}, speedY=${ball.speedY.toFixed(1)}`);
+                }
+
+                // AI paddle movement (only in PvE mode)
+                if (currentGameMode === GAME_MODE.PVE) {
+                    moveComputerPaddle();
+                }
+
+                // Check collisions
+                checkCollision();
+                
+                // Check scoring
+                checkScoring();
+                
+                // Check for winner in single player mode
+                if (currentGameMode === GAME_MODE.PVE) {
+                    if (playerScore >= SCORE_LIMIT || computerScore >= SCORE_LIMIT) {
+                        // Game over - show winner screen
+                        showSinglePlayerGameOver();
+                    }
+                }
+                
+                // Send ball updates in online mode (host only)
+                if (currentGameMode === GAME_MODE.ONLINE && isHost && socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'ball_update',
+                        ball: {
+                            x: ball.x,
+                            y: ball.y,
+                            speedX: ball.speedX,
+                            speedY: ball.speedY
+                        }
+                    }));
+                }
+            }
+
+            // Always draw game elements
+            drawPaddles();
+            drawBall();
+            drawScores();
+
+            // Continue game loop
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Set initial difficulty
+        setDifficulty(difficultyLevel);
+        
+        // Initialize AI prediction
+        ball.lastPredictedY = canvas.height / 2;
+        aiFrameCounter = computerPaddle.reactionDelay; // Skip initial delay
+        
+        // Start the game loop
+        gameLoop();
+        
+        // Start in menu state
+        currentGameState = GAME_STATE.MENU;
+    </script>
+</body>
+</html>

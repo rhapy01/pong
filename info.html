@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Pong - Information</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            background-color: #000; /* Black fallback */
+            background-image: url('images/baggy.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 30px;
+            background-color: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+            border: 5px solid #000;
+        }
+        
+        h1, h2 {
+            color: #FF8C00;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 42px;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px rgba(255, 140, 0, 0.5);
+        }
+        
+        h2 {
+            font-size: 28px;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #FF8C00;
+            padding-bottom: 10px;
+        }
+        
+        h3 {
+            font-size: 22px;
+            color: #FF8C00;
+            margin-top: 25px;
+            margin-bottom: 10px;
+        }
+        
+        .mode-container {
+            background-color: rgba(0, 0, 0, 0.7);
+            border-left: 4px solid #FF8C00;
+            padding: 15px 20px;
+            margin-bottom: 25px;
+            border-radius: 5px;
+        }
+        
+        ol {
+            padding-left: 20px;
+        }
+        
+        ol li {
+            margin-bottom: 8px;
+        }
+        
+        p {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        ul {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            padding-left: 25px;
+        }
+        
+        li {
+            margin-bottom: 10px;
+        }
+        
+        .key {
+            display: inline-block;
+            background-color: #000;
+            color: #fff;
+            border: 2px solid #FF8C00;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-weight: bold;
+            margin: 0 3px;
+        }
+        
+        .credits {
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 40px;
+            border-left: 4px solid #FF8C00;
+        }
+        
+        .credit-name {
+            font-weight: bold;
+            color: #FF8C00;
+        }
+        
+        .back-button {
+            display: block;
+            width: 200px;
+            margin: 40px auto 20px;
+            padding: 12px 0;
+            background-color: #000;
+            color: white;
+            border: 2px solid #FF8C00;
+            border-radius: 5px;
+            font-size: 18px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .back-button:hover {
+            background-color: #FF8C00;
+            color: #000;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SIGN PONG</h1>
+        
+        <h2>How to Play</h2>
+        <p>Sign Pong is a modern take on the classic Pong game. The objective is simple: use your paddle to hit the ball past your opponent's paddle to score points. The first player to reach 10 points wins the game!</p>
+        
+        <h2>Game Modes</h2>
+        
+        <h3>Single Player Mode</h3>
+        <div class="mode-container">
+            <p>Challenge yourself against the computer's advanced AI in a race to 10 points.</p>
+            <ul>
+            <li><strong>How to Start:</strong> Click the "Single Player" button on the main menu to begin immediately.</li>
+            <li><strong>Difficulty Levels:</strong> Adjust the difficulty by clicking the "Difficulty" button on the main menu.</li>
+            <li><strong>Easy Mode:</strong> The AI moves slower and has less precise predictions, perfect for beginners.</li>
+            <li><strong>Normal Mode:</strong> Balanced AI that provides a moderate challenge for most players.</li>
+            <li><strong>Hard Mode:</strong> Advanced AI with faster reactions and more accurate predictions.</li>
+            <li><strong>Expert Mode:</strong> Nearly professional-level AI that will test even the most skilled players.</li>
+            <li><strong>Scoring:</strong> First player to reach 10 points wins the match.</li>
+            <li><strong>Game Over:</strong> When either you or the computer reaches 10 points, a game over screen will appear showing the winner.</li>
+            <li><strong>Share Your Score:</strong> After the game ends, you can share your results on social media or copy the link to share with friends.</li>
+            </ul>
+        </div>
+        
+        <h3>Online Multiplayer Mode</h3>
+        <div class="mode-container">
+            <p>Challenge other players in real-time matches over the internet.</p>
+            <ul>
+            <li><strong>How to Start:</strong> Click the "Online Multiplayer" button on the main menu.</li>
+            <li><strong>Player Name:</strong> Enter your display name that other players will see.</li>
+            <li><strong>Creating a Room:</strong>
+                <ol>
+                    <li>Click "Create Room" to generate a unique room code.</li>
+                    <li>Share this code with your friend who wants to join your game.</li>
+                    <li>Wait for your opponent to join - the game will start automatically when they connect.</li>
+                </ol>
+            </li>
+            <li><strong>Joining a Room:</strong>
+                <ol>
+                    <li>Click "Join Room" on the online menu.</li>
+                    <li>Enter the room code provided by your friend.</li>
+                    <li>Click "Join" to connect to their game.</li>
+                </ol>
+            </li>
+            <li><strong>Quick Match:</strong> Click "Quick Match" to be automatically paired with any available player.</li>
+            <li><strong>Match Format:</strong> Online matches consist of two sets with players switching sides between sets.</li>
+            <li><strong>Rest Period:</strong> There's a short break between sets to prepare for the side switch.</li>
+            <li><strong>Scoring:</strong> The player with the highest total score across both sets wins the match.</li>
+            <li><strong>Disconnections:</strong> If your opponent disconnects, you'll be returned to the main menu.</li>
+            <li><strong>Share Your Score:</strong> After the match ends, you can share your results on social media platforms or copy the link to share with friends.</li>
+            </ul>
+        </div>
+        
+        <h2>Controls</h2>
+        <div class="mode-container">
+            <ul>
+                <li><span class="key">W</span> or <span class="key">↑</span> - Move paddle up</li>
+                <li><span class="key">S</span> or <span class="key">↓</span> - Move paddle down</li>
+                <li><span class="key">ESC</span> - Pause game</li>
+            </ul>
+        </div>
+        
+        <h2>Game Features</h2>
+        <div class="mode-container">
+            <ul>
+                <li><strong>Dynamic Ball Speed:</strong> The ball gradually speeds up during rallies for increasing challenge.</li>
+                <li><strong>Angle Control:</strong> The ball's angle changes based on where it hits your paddle, allowing for strategic shots.</li>
+                <li><strong>Human-like AI:</strong> The computer opponent features advanced physics-based movement that mimics human players.</li>
+                <li><strong>Score Tracking:</strong> Clear score display shows the current score and indicates who's winning.</li>
+            </ul>
+        </div>
+        
+        <h2>Tips</h2>
+        <div class="mode-container">
+            <ul>
+                <li>Hit the ball with the edges of your paddle to create sharper angles.</li>
+                <li>Try to anticipate where the ball will go rather than just reacting.</li>
+                <li>In higher difficulties, the AI will be more precise and responsive.</li>
+                <li>Practice timing your movements to improve your reaction speed.</li>
+            </ul>
+        </div>
+        
+        <div class="credits">
+            <h2>Credits</h2>
+            <p><span class="credit-name">IsaacXVOXEL:</span> Original concept and game design</p>
+            <p><span class="credit-name">Sign_verse:</span> Game development support and testing</p>
+            <p><span class="credit-name">Sign Gamers:</span> Community support and feedback</p>
+        </div>
+        
+        <a href="index.html" class="back-button">Back to Game</a>
+    </div>
+</body>
+</html>
