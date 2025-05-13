@@ -676,7 +676,20 @@
             
             // Connect to WebSocket server
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.hostname}:3000`;
+            
+            // For deployment on Render
+            // If we're on a production domain (not localhost), don't specify port
+            // This allows the WebSocket to connect to the same domain and port as the website
+            let wsUrl;
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                // Local development - use port 3000
+                wsUrl = `${protocol}//${window.location.hostname}:3000`;
+            } else {
+                // Production deployment - use same domain and let the server handle routing
+                wsUrl = `${protocol}//${window.location.hostname}`;
+            }
+            
+            console.log('Connecting to WebSocket server at:', wsUrl);
             socket = new WebSocket(wsUrl);
             
             socket.onopen = () => {
