@@ -25,12 +25,14 @@
             touch-action: manipulation; /* Prevents double-tap zoom */
         }
         
-        /* Mobile orientation handling */
-        /* Only enforce landscape orientation during gameplay, not in menu */
+        /* Mobile landscape orientation enforcement */
         @media (orientation: portrait) and (max-width: 900px) {
-            /* Show rotate device notification only during gameplay */
+            #gameContainer {
+                display: none;
+            }
+            
             #rotateDevice {
-                display: none; /* Hidden by default */
+                display: flex;
                 position: fixed;
                 top: 0;
                 left: 0;
@@ -45,28 +47,11 @@
                 padding: 20px;
             }
             
-            #rotateDevice svg {
+            #rotateDevice img {
                 width: 80px;
                 height: 80px;
                 margin-bottom: 20px;
                 animation: rotate 2s infinite;
-            }
-            
-            /* Portrait-specific menu styling */
-            #mainMenu {
-                padding: 20px;
-            }
-            
-            #mainMenu h1 {
-                font-size: 36px !important;
-                margin-bottom: 30px !important;
-            }
-            
-            .menu-button {
-                width: 80% !important;
-                max-width: 300px;
-                padding: 15px 0 !important;
-                margin: 10px auto !important;
             }
         }
         
@@ -95,26 +80,10 @@
                 border: none !important;
             }
             
-            /* Portrait mode specific styles */
-            @media (orientation: portrait) {
-                #gameCanvas {
-                    width: 90% !important;
-                    height: auto !important;
-                    max-height: 50vh !important;
-                }
-                
-                #mainMenu {
-                    padding-top: 10% !important;
-                }
-            }
-            
-            /* Landscape mode specific styles */
-            @media (orientation: landscape) {
-                #gameCanvas {
-                    width: 100% !important;
-                    height: auto !important;
-                    max-height: 80vh !important;
-                }
+            #gameCanvas {
+                width: 100% !important;
+                height: auto !important;
+                max-height: 80vh !important;
             }
             
             .menu-button {
@@ -1090,22 +1059,10 @@
         
         // Add window resize event listener to handle orientation changes
         window.addEventListener('resize', () => {
-            handleGameStateChange();
-        });
-        
-        // Add specific orientation change event listener for mobile devices
-        window.addEventListener('orientationchange', () => {
-            // Short delay to allow the browser to update dimensions
-            setTimeout(() => {
+            // Check if game is in playing state
+            if (currentGameState === GAME_STATE.PLAYING) {
                 handleGameStateChange();
-                
-                // If switching to landscape during gameplay, resume the game
-                const isLandscape = window.innerWidth > window.innerHeight;
-                if (isLandscape && currentGameState === GAME_STATE.PAUSED && document.getElementById('rotateDevice').style.display === 'flex') {
-                    // Resume game after orientation change to landscape
-                    resumeGame();
-                }
-            }, 300);
+            }
         });
         
         // Initialize mobile controls on page load
@@ -1397,27 +1354,6 @@
         // Call this function whenever game state or mode changes
         function handleGameStateChange() {
             updateVirtualControlsVisibility();
-            updateOrientationRequirements();
-        }
-        
-        // Show/hide rotate device notification based on game state
-        function updateOrientationRequirements() {
-            const rotateDevice = document.getElementById('rotateDevice');
-            if (!rotateDevice) return;
-            
-            const isPortrait = window.innerHeight > window.innerWidth;
-            const isMobile = window.innerWidth <= 900 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            
-            // Only show rotate device notification during gameplay, not in menu
-            if (isMobile && isPortrait && currentGameState === GAME_STATE.PLAYING) {
-                rotateDevice.style.display = 'flex';
-                // Pause the game if in portrait mode during gameplay
-                if (currentGameState === GAME_STATE.PLAYING) {
-                    pauseGame();
-                }
-            } else {
-                rotateDevice.style.display = 'none';
-            }
         }
         
         function handlePlayerControls() {
