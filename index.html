@@ -1190,14 +1190,50 @@
         }
 
         // Player paddle controls
-        // Mouse control for player 1 in PvE mode
+        function handleVirtualControl(direction) {
+            if (currentGameState === GAME_STATE.PLAYING) {
+                const moveAmount = 10; // Adjust this value for control sensitivity
+                const currentY = playerPaddle.y;
+                let newY;
+
+                if (direction === 'up') {
+                    newY = Math.max(0, currentY - moveAmount);
+                } else {
+                    newY = Math.min(canvas.height - paddleHeight, currentY + moveAmount);
+                }
+
+                // In online mode, send position to server
+                if (isOnlineMode && socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'paddle_move',
+                        y: newY
+                    }));
+                } else {
+                    // In local mode, update directly
+                    playerPaddle.y = newY;
+                }
+            }
+        }
+
+        // Mouse control for paddle movement
         document.addEventListener('mousemove', (event) => {
             if (currentGameState === GAME_STATE.PLAYING) {
                 const rect = canvas.getBoundingClientRect();
                 const mouseY = event.clientY - rect.top;
                 
                 // Constrain paddle movement within canvas
-                playerPaddle.y = Math.max(0, Math.min(mouseY - paddleHeight / 2, canvas.height - paddleHeight));
+                const newY = Math.max(0, Math.min(mouseY - paddleHeight / 2, canvas.height - paddleHeight));
+                
+                // In online mode, send position to server
+                if (isOnlineMode && socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'paddle_move',
+                        y: newY
+                    }));
+                } else {
+                    // In local mode, update directly
+                    playerPaddle.y = newY;
+                }
             }
         });
         
@@ -1232,8 +1268,19 @@
                 const rect = canvas.getBoundingClientRect();
                 lastTouchY = touch.clientY - rect.top;
                 
-                // Move paddle to touch position
-                playerPaddle.y = Math.max(0, Math.min(lastTouchY - paddleHeight / 2, canvas.height - paddleHeight));
+                // Calculate new paddle position
+                const newY = Math.max(0, Math.min(lastTouchY - paddleHeight / 2, canvas.height - paddleHeight));
+                
+                // In online mode, send position to server
+                if (isOnlineMode && socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'paddle_move',
+                        y: newY
+                    }));
+                } else {
+                    // In local mode, update directly
+                    playerPaddle.y = newY;
+                }
             }
         }
         
