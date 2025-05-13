@@ -912,8 +912,12 @@
                     break;
                     
                 case 'opponent_move':
-                    // Update opponent paddle position
+                    // Update opponent paddle position - apply immediately without depending on game loop
                     computerPaddle.y = data.y;
+                    // Force a redraw to ensure opponent paddle is displayed at the correct position
+                    if (currentGameState === GAME_STATE.PLAYING) {
+                        drawGame();
+                    }
                     break;
                     
                 case 'ball_update':
@@ -1190,50 +1194,14 @@
         }
 
         // Player paddle controls
-        function handleVirtualControl(direction) {
-            if (currentGameState === GAME_STATE.PLAYING) {
-                const moveAmount = 10; // Adjust this value for control sensitivity
-                const currentY = playerPaddle.y;
-                let newY;
-
-                if (direction === 'up') {
-                    newY = Math.max(0, currentY - moveAmount);
-                } else {
-                    newY = Math.min(canvas.height - paddleHeight, currentY + moveAmount);
-                }
-
-                // In online mode, send position to server
-                if (isOnlineMode && socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({
-                        type: 'paddle_move',
-                        y: newY
-                    }));
-                } else {
-                    // In local mode, update directly
-                    playerPaddle.y = newY;
-                }
-            }
-        }
-
-        // Mouse control for paddle movement
+        // Mouse control for player 1 in PvE mode
         document.addEventListener('mousemove', (event) => {
             if (currentGameState === GAME_STATE.PLAYING) {
                 const rect = canvas.getBoundingClientRect();
                 const mouseY = event.clientY - rect.top;
                 
                 // Constrain paddle movement within canvas
-                const newY = Math.max(0, Math.min(mouseY - paddleHeight / 2, canvas.height - paddleHeight));
-                
-                // In online mode, send position to server
-                if (isOnlineMode && socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({
-                        type: 'paddle_move',
-                        y: newY
-                    }));
-                } else {
-                    // In local mode, update directly
-                    playerPaddle.y = newY;
-                }
+                playerPaddle.y = Math.max(0, Math.min(mouseY - paddleHeight / 2, canvas.height - paddleHeight));
             }
         });
         
@@ -1268,19 +1236,8 @@
                 const rect = canvas.getBoundingClientRect();
                 lastTouchY = touch.clientY - rect.top;
                 
-                // Calculate new paddle position
-                const newY = Math.max(0, Math.min(lastTouchY - paddleHeight / 2, canvas.height - paddleHeight));
-                
-                // In online mode, send position to server
-                if (isOnlineMode && socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({
-                        type: 'paddle_move',
-                        y: newY
-                    }));
-                } else {
-                    // In local mode, update directly
-                    playerPaddle.y = newY;
-                }
+                // Move paddle to touch position
+                playerPaddle.y = Math.max(0, Math.min(lastTouchY - paddleHeight / 2, canvas.height - paddleHeight));
             }
         }
         
@@ -1354,9 +1311,32 @@
             upButton.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 keysPressed['ArrowUp'] = true;
+                // Clear any existing interval
+                clearInterval(upInterval);
+                // Apply immediate change
+                if (currentGameState === GAME_STATE.PLAYING) {
+                    playerPaddle.y = Math.max(0, playerPaddle.y - playerPaddle.speed);
+                    // Send update to server immediately
+                    if (socket && socket.readyState === WebSocket.OPEN && currentGameMode === GAME_MODE.ONLINE) {
+                        socket.send(JSON.stringify({
+                            type: 'paddle_move',
+                            y: playerPaddle.y
+                        }));
+                    }
+                }
+                // Set interval for continuous movement
                 upInterval = setInterval(() => {
-                    keysPressed['ArrowUp'] = true;
-                }, 16);
+                    if (currentGameState === GAME_STATE.PLAYING) {
+                        playerPaddle.y = Math.max(0, playerPaddle.y - playerPaddle.speed);
+                        // Send update to server
+                        if (socket && socket.readyState === WebSocket.OPEN && currentGameMode === GAME_MODE.ONLINE) {
+                            socket.send(JSON.stringify({
+                                type: 'paddle_move',
+                                y: playerPaddle.y
+                            }));
+                        }
+                    }
+                }, 16); // ~60fps
             });
             
             upButton.addEventListener('touchend', (e) => {
@@ -1369,9 +1349,32 @@
             downButton.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 keysPressed['ArrowDown'] = true;
+                // Clear any existing interval
+                clearInterval(downInterval);
+                // Apply immediate change
+                if (currentGameState === GAME_STATE.PLAYING) {
+                    playerPaddle.y = Math.min(canvas.height - paddleHeight, playerPaddle.y + playerPaddle.speed);
+                    // Send update to server immediately
+                    if (socket && socket.readyState === WebSocket.OPEN && currentGameMode === GAME_MODE.ONLINE) {
+                        socket.send(JSON.stringify({
+                            type: 'paddle_move',
+                            y: playerPaddle.y
+                        }));
+                    }
+                }
+                // Set interval for continuous movement
                 downInterval = setInterval(() => {
-                    keysPressed['ArrowDown'] = true;
-                }, 16);
+                    if (currentGameState === GAME_STATE.PLAYING) {
+                        playerPaddle.y = Math.min(canvas.height - paddleHeight, playerPaddle.y + playerPaddle.speed);
+                        // Send update to server
+                        if (socket && socket.readyState === WebSocket.OPEN && currentGameMode === GAME_MODE.ONLINE) {
+                            socket.send(JSON.stringify({
+                                type: 'paddle_move',
+                                y: playerPaddle.y
+                            }));
+                        }
+                    }
+                }, 16); // ~60fps
             });
             
             downButton.addEventListener('touchend', (e) => {
@@ -1404,7 +1407,7 @@
         }
         
         function handlePlayerControls() {
-            // Only process keyboard controls when game is playing
+            // Only process controls when game is playing
             if (currentGameState !== GAME_STATE.PLAYING) return;
             
             // Online mode
@@ -1421,10 +1424,14 @@
                 
                 // Send paddle position to server if it changed
                 if (socket && socket.readyState === WebSocket.OPEN && playerPaddle.y !== oldY) {
-                    socket.send(JSON.stringify({
-                        type: 'paddle_move',
-                        y: playerPaddle.y
-                    }));
+                    // Add a small delay to avoid flooding the server with messages
+                    if (!window.lastSentTime || Date.now() - window.lastSentTime > 16) { // ~60fps rate limit
+                        socket.send(JSON.stringify({
+                            type: 'paddle_move',
+                            y: playerPaddle.y
+                        }));
+                        window.lastSentTime = Date.now();
+                    }
                 }
             }
         }
