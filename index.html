@@ -941,14 +941,15 @@
                     break;
                     
                 case 'opponent_move':
-                    // Update opponent paddle position - apply immediately without depending on game loop
+                    // Update opponent paddle position based on the current sides
                     computerPaddle.y = data.y;
                     
                     // Force a redraw to ensure opponent paddle is displayed at the correct position
                     if (currentGameState === GAME_STATE.PLAYING) {
-                        // For immediate visual feedback
-                        drawPaddles();
-                        drawBall();
+                        requestAnimationFrame(() => {
+                            drawPaddles();
+                            drawBall();
+                        });
                     }
                     break;
                     
@@ -1399,7 +1400,8 @@
                     if (socket && socket.readyState === WebSocket.OPEN && currentGameMode === GAME_MODE.ONLINE) {
                         socket.send(JSON.stringify({
                             type: 'paddle_move',
-                            y: playerPaddle.y
+                            y: playerPaddle.y,
+                            side: playerSide // Include which side the player is on
                         }));
                     }
                 }
@@ -1411,7 +1413,8 @@
                         if (socket && socket.readyState === WebSocket.OPEN && currentGameMode === GAME_MODE.ONLINE) {
                             socket.send(JSON.stringify({
                                 type: 'paddle_move',
-                                y: playerPaddle.y
+                                y: playerPaddle.y,
+                                side: playerSide // Include which side the player is on
                             }));
                         }
                     }
@@ -1443,7 +1446,8 @@
                     if (socket && socket.readyState === WebSocket.OPEN && currentGameMode === GAME_MODE.ONLINE) {
                         socket.send(JSON.stringify({
                             type: 'paddle_move',
-                            y: playerPaddle.y
+                            y: playerPaddle.y,
+                            side: playerSide // Include which side the player is on
                         }));
                     }
                 }
@@ -1455,7 +1459,8 @@
                         if (socket && socket.readyState === WebSocket.OPEN && currentGameMode === GAME_MODE.ONLINE) {
                             socket.send(JSON.stringify({
                                 type: 'paddle_move',
-                                y: playerPaddle.y
+                                y: playerPaddle.y,
+                                side: playerSide // Include which side the player is on
                             }));
                         }
                     }
@@ -1553,14 +1558,13 @@
                 
                 // Send paddle position to server if it changed
                 if (socket && socket.readyState === WebSocket.OPEN && playerPaddle.y !== oldY) {
-                    // Add a small delay to avoid flooding the server with messages
-                    if (!window.lastSentTime || Date.now() - window.lastSentTime > 16) { // ~60fps rate limit
-                        socket.send(JSON.stringify({
-                            type: 'paddle_move',
-                            y: playerPaddle.y
-                        }));
-                        window.lastSentTime = Date.now();
-                    }
+                    // Send update immediately without rate limiting
+                    socket.send(JSON.stringify({
+                        type: 'paddle_move',
+                        y: playerPaddle.y,
+                        side: playerSide // Include which side the player is on
+                    }));
+                    window.lastSentTime = Date.now();
                 }
             }
         }
@@ -3026,17 +3030,21 @@
                     }
                 }
                 
-                // Send ball updates in online mode (host only)
+                // Send ball updates in online mode (host only) - with reduced frequency
                 if (currentGameMode === GAME_MODE.ONLINE && isHost && socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({
-                        type: 'ball_update',
-                        ball: {
-                            x: ball.x,
-                            y: ball.y,
-                            speedX: ball.speedX,
-                            speedY: ball.speedY
-                        }
-                    }));
+                    // Rate limit ball updates to reduce network traffic
+                    if (!window.lastBallUpdate || Date.now() - window.lastBallUpdate > 32) { // ~30fps for ball updates
+                        socket.send(JSON.stringify({
+                            type: 'ball_update',
+                            ball: {
+                                x: ball.x,
+                                y: ball.y,
+                                speedX: ball.speedX,
+                                speedY: ball.speedY
+                            }
+                        }));
+                        window.lastBallUpdate = Date.now();
+                    }
                 }
             }
 
