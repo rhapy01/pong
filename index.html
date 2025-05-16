@@ -55,7 +55,7 @@
             }
         }
         
-        @media (orientation: landscape) or (min-width: 901px) {
+        @media (orientation: landscape), (min-width: 901px) {
             #rotateDevice {
                 display: none;
             }
@@ -104,6 +104,29 @@
                 font-size: 14px !important;
             }
         }
+        
+        /* Specific landscape adjustments for mobile */
+        @media (orientation: landscape) and (max-width: 900px) {
+            #gameContainer {
+                width: 100vw !important;
+                height: 100vh !important;
+                overflow: hidden !important;
+            }
+            
+            #gameCanvas {
+                width: auto !important;
+                height: 90vh !important;
+                max-width: 95vw !important;
+                max-height: 90vh !important;
+            }
+            
+            /* Adjust game controls positioning */
+            #gameControls {
+                top: 5px !important;
+                right: 5px !important;
+            }
+        }
+        
         #gameContainer {
             position: relative;
             width: 800px;
@@ -123,6 +146,9 @@
             border: 4px solid #ecf0f1;
             background-color: #2ecc71;
             z-index: 10;
+            box-sizing: border-box;
+            max-width: 100%;
+            max-height: 100%;
         }
         .spectator {
             position: absolute;
@@ -459,35 +485,29 @@
         const speedValue = document.getElementById('speedValue');
         const difficultyButtons = document.querySelectorAll('.difficulty-button');
 
-        // Initialize game elements
-        function initializeGame() {
-            // Get canvas and context
-            canvas = document.getElementById('gameCanvas');
-            ctx = canvas.getContext('2d');
-            
-            // Create player paddle (left side by default)
-            playerPaddle = {
-                x: 50,
-                y: canvas.height / 2 - paddleHeight / 2,
-                width: paddleWidth,
-                height: paddleHeight,
-                speed: 10 * gameSpeed
-            };
-            
-            // Create computer paddle (right side by default)
-            computerPaddle = {
-                x: canvas.width - 50 - paddleWidth,
-                y: canvas.height / 2 - paddleHeight / 2,
-                width: paddleWidth,
-                height: paddleHeight,
-                speed: 8 * gameSpeed
-            };
-            
-            // In online mode, paddle positions will be updated based on playerSide
-        }
+        // Paddle properties
+        const paddleWidth = 10;
+        const paddleHeight = 50;  // Reduced from 100 to 50 (half size)
+        const leftPaddleX = 20;
+        const rightPaddleX = canvas.width - 20 - paddleWidth;
+        const playerPaddle = {
+            x: leftPaddleX,
+            y: canvas.height / 2 - paddleHeight / 2,
+            width: paddleWidth,
+            height: paddleHeight,
+            speed: 8
+        };
+        const computerPaddle = {
+            x: rightPaddleX,
+            y: canvas.height / 2 - paddleHeight / 2,
+            width: paddleWidth,
+            height: paddleHeight,
+            speed: 6,
+            reactionTime: 3, // Frames to wait before responding
+            predictionAccuracy: 0.85, // How accurately AI predicts ball position
+            maxSpeedMultiplier: 1.5 // Maximum speed boost for AI
+        };
 
-        // These variables are already declared above
-        
         // Ball properties
         const ball = {
             x: canvas.width / 2,
@@ -502,6 +522,8 @@
         };
 
         // Scoring and game progression
+        let playerScore = 0;
+        let computerScore = 0;
         let totalHits = 0;  // Track total successful hits to increase speed over time
         let speedIncreaseInterval = 5;  // Increase speed every X hits
         let maxSpeedIncrease = 1.8;  // Maximum speed multiplier from rally length
@@ -553,9 +575,10 @@
         
         // WebSocket connection for online play
         let socket = null;
+        let playerId = null;
         let roomId = null;
-        let opponentId = null;
         let isHost = false;
+        let opponentId = null;
         let playerName = "Player";
         let opponentName = "Opponent";
         
@@ -879,8 +902,7 @@
                     currentGameMode = GAME_MODE.ONLINE;
                     currentGameState = GAME_STATE.PLAYING;
                     
-                    // Store the player's ID and opponent's ID
-                    myPlayerId = data.yourId;
+                    // Initialize game with received data
                     opponentId = data.playerIds.find(id => id !== data.yourId);
                     
                     // Get opponent name if provided
@@ -888,21 +910,7 @@
                         opponentName = data.playerNames[opponentId];
                     }
                     
-                    console.log(`Game starting with opponent: ${opponentName} (ID: ${opponentId}). My ID: ${myPlayerId}`);
-                    
-                    // Determine player side based on player ID order
-                    // First player in the array is left side, second is right side
-                    const playerIds = data.playerIds;
-                    playerIds.sort(); // Sort IDs to ensure consistent assignment
-                    
-                    // Assign sides based on sorted IDs
-                    if (playerIds[0] === myPlayerId) {
-                        playerSide = 'left';
-                        console.log('I am on the LEFT side');
-                    } else {
-                        playerSide = 'right';
-                        console.log('I am on the RIGHT side');
-                    }
+                    console.log(`Game starting with opponent: ${opponentName}`);
                     
                     // Reset scores for the current match
                     playerScore = 0;
@@ -911,6 +919,7 @@
                     set2Score = { player: 0, opponent: 0 };
                     currentSet = 1;
                     isRestPeriod = false;
+                    playerSide = 'left';
                     matchTimeRemaining = 2 * 60; // 2 minutes in seconds
                     
                     // Reset paddles and ball
@@ -918,7 +927,7 @@
                     playerPaddle.y = canvas.height / 2 - paddleHeight / 2;
                     computerPaddle.y = canvas.height / 2 - paddleHeight / 2;
                     
-                    // Update virtual controls visibility based on new game state
+                    // Update game interface and controls for online mode
                     handleGameStateChange();
                     break;
                     
@@ -933,18 +942,13 @@
                     
                 case 'opponent_move':
                     // Update opponent paddle position - apply immediately without depending on game loop
+                    computerPaddle.y = data.y;
+                    
+                    // Force a redraw to ensure opponent paddle is displayed at the correct position
                     if (currentGameState === GAME_STATE.PLAYING) {
-                        // Verify this is actually the opponent's move
-                        if (data.playerId && data.playerId !== myPlayerId) {
-                            computerPaddle.y = data.y;
-                            // Force a redraw to ensure opponent paddle is displayed at the correct position
-                            drawGame();
-                            
-                            // Debug log to track opponent movements
-                            console.log(`Opponent ${data.playerId} paddle moved to y: ${data.y}`);
-                        } else {
-                            console.log('Received move for my own paddle, ignoring');
-                        }
+                        // For immediate visual feedback
+                        drawPaddles();
+                        drawBall();
                     }
                     break;
                     
@@ -1095,13 +1099,60 @@
             if (currentGameState === GAME_STATE.PLAYING) {
                 handleGameStateChange();
             }
+            
+            // Resize and reposition game elements for better responsiveness
+            resizeGameCanvas();
         });
         
         // Initialize mobile controls on page load
         window.addEventListener('load', () => {
             createVirtualControls();
             handleGameStateChange();
+            resizeGameCanvas();
         });
+        
+        // Function to resize game canvas based on container size
+        function resizeGameCanvas() {
+            const container = document.getElementById('gameContainer');
+            const canvas = document.getElementById('gameCanvas');
+            
+            if (!container || !canvas) return;
+            
+            // Get container dimensions
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            
+            // Maintain aspect ratio (800x400 = 2:1)
+            const aspectRatio = 2;
+            
+            let newWidth, newHeight;
+            
+            // Check if we're in landscape or portrait
+            if (window.innerWidth > window.innerHeight) {
+                // Landscape orientation
+                newHeight = Math.min(containerHeight * 0.9, containerHeight - 20);
+                newWidth = newHeight * aspectRatio;
+                
+                // If width exceeds container, adjust accordingly
+                if (newWidth > containerWidth * 0.95) {
+                    newWidth = containerWidth * 0.95;
+                    newHeight = newWidth / aspectRatio;
+                }
+            } else {
+                // Portrait orientation - prioritize width
+                newWidth = Math.min(containerWidth * 0.9, containerWidth - 20);
+                newHeight = newWidth / aspectRatio;
+            }
+            
+            // Apply new dimensions to canvas style
+            canvas.style.width = newWidth + 'px';
+            canvas.style.height = newHeight + 'px';
+            
+            // Keep the canvas dimensions for gameplay consistent
+            // This ensures game physics aren't affected by resizing
+            // The rendering will scale to fit the styled dimensions
+            console.log(`Canvas resized to: ${newWidth}x${newHeight}`);
+        }
         
         function toggleDifficultySelector() {
             if (difficultySelector.style.display === 'flex') {
@@ -1348,8 +1399,7 @@
                     if (socket && socket.readyState === WebSocket.OPEN && currentGameMode === GAME_MODE.ONLINE) {
                         socket.send(JSON.stringify({
                             type: 'paddle_move',
-                            y: playerPaddle.y,
-                            playerId: myPlayerId
+                            y: playerPaddle.y
                         }));
                     }
                 }
@@ -1361,8 +1411,7 @@
                         if (socket && socket.readyState === WebSocket.OPEN && currentGameMode === GAME_MODE.ONLINE) {
                             socket.send(JSON.stringify({
                                 type: 'paddle_move',
-                                y: playerPaddle.y,
-                                playerId: myPlayerId
+                                y: playerPaddle.y
                             }));
                         }
                     }
@@ -1370,6 +1419,12 @@
             });
             
             upButton.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keysPressed['ArrowUp'] = false;
+                clearInterval(upInterval);
+            });
+            
+            upButton.addEventListener('touchcancel', (e) => {
                 e.preventDefault();
                 keysPressed['ArrowUp'] = false;
                 clearInterval(upInterval);
@@ -1388,8 +1443,7 @@
                     if (socket && socket.readyState === WebSocket.OPEN && currentGameMode === GAME_MODE.ONLINE) {
                         socket.send(JSON.stringify({
                             type: 'paddle_move',
-                            y: playerPaddle.y,
-                            playerId: myPlayerId
+                            y: playerPaddle.y
                         }));
                     }
                 }
@@ -1401,8 +1455,7 @@
                         if (socket && socket.readyState === WebSocket.OPEN && currentGameMode === GAME_MODE.ONLINE) {
                             socket.send(JSON.stringify({
                                 type: 'paddle_move',
-                                y: playerPaddle.y,
-                                playerId: myPlayerId
+                                y: playerPaddle.y
                             }));
                         }
                     }
@@ -1410,6 +1463,12 @@
             });
             
             downButton.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keysPressed['ArrowDown'] = false;
+                clearInterval(downInterval);
+            });
+            
+            downButton.addEventListener('touchcancel', (e) => {
                 e.preventDefault();
                 keysPressed['ArrowDown'] = false;
                 clearInterval(downInterval);
@@ -1423,10 +1482,31 @@
             const virtualControls = document.getElementById('virtualControls');
             if (!virtualControls) return;
             
-            // Show virtual controls on mobile devices in online multiplayer mode
-            const isMobile = window.innerWidth <= 900 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            // More accurate detection for touch devices
+            const isTouchDevice = ('ontouchstart' in window) || 
+                                 (navigator.maxTouchPoints > 0) || 
+                                 (navigator.msMaxTouchPoints > 0) ||
+                                 /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             
-            if (isMobile && currentGameMode === GAME_MODE.ONLINE && currentGameState === GAME_STATE.PLAYING) {
+            if (isTouchDevice && currentGameMode === GAME_MODE.ONLINE && currentGameState === GAME_STATE.PLAYING) {
+                // Adjust position based on screen orientation
+                if (window.innerWidth < window.innerHeight) {
+                    // Portrait mode - position at bottom
+                    virtualControls.style.right = '20px';
+                    virtualControls.style.top = 'auto';
+                    virtualControls.style.bottom = '50px';
+                    virtualControls.style.transform = 'none';
+                    virtualControls.style.flexDirection = 'row';
+                    virtualControls.style.gap = '30px';
+                } else {
+                    // Landscape mode - position on right side
+                    virtualControls.style.right = '20px';
+                    virtualControls.style.top = '50%';
+                    virtualControls.style.bottom = 'auto';
+                    virtualControls.style.transform = 'translateY(-50%)';
+                    virtualControls.style.flexDirection = 'column';
+                    virtualControls.style.gap = '20px';
+                }
                 virtualControls.style.display = 'flex';
             } else {
                 virtualControls.style.display = 'none';
@@ -1436,6 +1516,23 @@
         // Call this function whenever game state or mode changes
         function handleGameStateChange() {
             updateVirtualControlsVisibility();
+            
+            // Resize and reposition game elements based on current orientation
+            resizeGameCanvas();
+            
+            // Check if we need to show/hide rotation message
+            const isPortrait = window.innerHeight > window.innerWidth;
+            const isMobile = window.innerWidth <= 900;
+            
+            // Handle rotate device message
+            const rotateDevice = document.getElementById('rotateDevice');
+            if (rotateDevice) {
+                if (isPortrait && isMobile && currentGameState === GAME_STATE.PLAYING) {
+                    rotateDevice.style.display = 'flex';
+                } else {
+                    rotateDevice.style.display = 'none';
+                }
+            }
         }
         
         function handlePlayerControls() {
@@ -1460,11 +1557,9 @@
                     if (!window.lastSentTime || Date.now() - window.lastSentTime > 16) { // ~60fps rate limit
                         socket.send(JSON.stringify({
                             type: 'paddle_move',
-                            y: playerPaddle.y,
-                            playerId: myPlayerId // Send player ID to ensure correct paddle updates
+                            y: playerPaddle.y
                         }));
                         window.lastSentTime = Date.now();
-                        console.log(`Sent my paddle position: ${playerPaddle.y}`);
                     }
                 }
             }
@@ -1473,26 +1568,23 @@
         function resumeGame() {
             pauseMenu.style.display = 'none';
             currentGameState = GAME_STATE.PLAYING;
+            handleGameStateChange();
         }
             
         // Draw paddles with curved edges
         function drawPaddles() {
-            // Draw both paddles in black
-            ctx.fillStyle = '#000'; // Black for both paddles
-            
-            // In online mode, draw paddles based on player side
+            // In online mode, use different colors for player and opponent paddles
             if (currentGameMode === GAME_MODE.ONLINE) {
-                if (playerSide === 'left') {
-                    // Player is on left, opponent on right
-                    drawCurvedPaddle(playerPaddle.x, playerPaddle.y, paddleWidth, paddleHeight, true); // Left paddle
-                    drawCurvedPaddle(computerPaddle.x, computerPaddle.y, paddleWidth, paddleHeight, false); // Right paddle
-                } else {
-                    // Player is on right, opponent on left
-                    drawCurvedPaddle(computerPaddle.x, computerPaddle.y, paddleWidth, paddleHeight, true); // Left paddle
-                    drawCurvedPaddle(playerPaddle.x, playerPaddle.y, paddleWidth, paddleHeight, false); // Right paddle
-                }
+                // Player paddle is black
+                ctx.fillStyle = '#000'; 
+                drawCurvedPaddle(playerPaddle.x, playerPaddle.y, paddleWidth, paddleHeight, playerSide === 'left');
+                
+                // Opponent paddle is green
+                ctx.fillStyle = '#2ecc71';
+                drawCurvedPaddle(computerPaddle.x, computerPaddle.y, paddleWidth, paddleHeight, playerSide === 'right');
             } else {
-                // Single player mode - player always on left
+                // In PvE mode, both paddles are black
+                ctx.fillStyle = '#000';
                 drawCurvedPaddle(playerPaddle.x, playerPaddle.y, paddleWidth, paddleHeight, true);
                 drawCurvedPaddle(computerPaddle.x, computerPaddle.y, paddleWidth, paddleHeight, false);
             }
@@ -1505,7 +1597,7 @@
             ctx.beginPath();
             
             if (isLeft) {
-                // Left paddle (player)
+                // Left paddle
                 // Start from top-left (with straight edge)
                 ctx.moveTo(x, y);
                 // Draw straight left edge
@@ -1517,7 +1609,7 @@
                 // Draw top edge with slight curve
                 ctx.quadraticCurveTo(x + width/2, y - radius/2, x, y);
             } else {
-                // Right paddle (computer)
+                // Right paddle
                 // Start from top-right (with straight edge)
                 ctx.moveTo(x + width, y);
                 // Draw straight right edge
@@ -1534,6 +1626,9 @@
             ctx.fill();
             
             // Add a subtle gradient for 3D effect
+            const currentFillStyle = ctx.fillStyle; // Save the current fill style
+            const baseColor = ctx.fillStyle;
+            
             const gradient = ctx.createLinearGradient(
                 isLeft ? x : x + width,
                 y,
@@ -1545,6 +1640,9 @@
             
             ctx.fillStyle = gradient;
             ctx.fill();
+            
+            // Restore the original fill style
+            ctx.fillStyle = currentFillStyle;
         }
 
         // Draw ball
@@ -1557,50 +1655,75 @@
         }
 
         // Draw scores on the game board
-function drawScores() {
-    // Set font and alignment for scores
-    ctx.font = 'bold 32px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#FF8C00'; // Orange color for scores
-    
-    // Draw player score
-    ctx.fillText(playerScore, canvas.width / 4, 50);
-    
-    // Draw computer score
-    ctx.fillText(computerScore, (canvas.width / 4) * 3, 50);
-    
-    // Draw score limit indicator
-    ctx.font = '16px Arial';
-    ctx.fillText(`First to ${SCORE_LIMIT} wins!`, canvas.width / 2, 20);
-    
-    // Draw player labels
-    ctx.font = '18px Arial';
-    ctx.fillText('YOU', canvas.width / 4, 80);
-    ctx.fillText('COMPUTER', (canvas.width / 4) * 3, 80);
-}
+        function drawScores() {
+            // Set font and alignment for scores
+            ctx.font = 'bold 32px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#FF8C00'; // Orange color for scores
+            
+            if (currentGameMode === GAME_MODE.PVE) {
+                // Draw player score
+                ctx.fillText(playerScore, canvas.width / 4, 50);
+                
+                // Draw computer score
+                ctx.fillText(computerScore, (canvas.width / 4) * 3, 50);
+                
+                // Draw score limit indicator
+                ctx.font = '16px Arial';
+                ctx.fillText(`First to ${SCORE_LIMIT} wins!`, canvas.width / 2, 20);
+                
+                // Draw player labels
+                ctx.font = '18px Arial';
+                ctx.fillText('YOU', canvas.width / 4, 80);
+                ctx.fillText('COMPUTER', (canvas.width / 4) * 3, 80);
+            } else if (currentGameMode === GAME_MODE.ONLINE) {
+                // For online mode, position scores based on player's side
+                const leftScore = playerSide === 'left' ? playerScore : computerScore;
+                const rightScore = playerSide === 'left' ? computerScore : playerScore;
+                
+                // Draw scores
+                ctx.fillText(leftScore, canvas.width / 4, 50);
+                ctx.fillText(rightScore, (canvas.width / 4) * 3, 50);
+                
+                // Draw player labels with their names
+                ctx.font = '18px Arial';
+                const leftName = playerSide === 'left' ? playerName : opponentName;
+                const rightName = playerSide === 'left' ? opponentName : playerName;
+                
+                // Highlight player name in black, opponent in green
+                ctx.fillStyle = playerSide === 'left' ? '#000' : '#2ecc71'; 
+                ctx.fillText(leftName, canvas.width / 4, 80);
+                
+                ctx.fillStyle = playerSide === 'left' ? '#2ecc71' : '#000';
+                ctx.fillText(rightName, (canvas.width / 4) * 3, 80);
+                
+                // Reset fill style
+                ctx.fillStyle = '#FF8C00';
+            }
+        }
 
-function drawGame() {
-    // Clear canvas with white background
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw center line in orange
-    ctx.strokeStyle = '#FF8C00'; // Orange color
-    ctx.setLineDash([10, 10]);
-    ctx.beginPath();
-    ctx.moveTo(canvas.width / 2, 0);
-    ctx.lineTo(canvas.width / 2, canvas.height);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    
-    // Draw orange boundary lines
-    ctx.strokeStyle = '#FF8C00'; // Orange color
-    ctx.lineWidth = 4;
-    ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
-    ctx.lineWidth = 1;
-    
-    // Draw scores
-    drawScores();
+        function drawGame() {
+            // Clear canvas with white background
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw center line in orange
+            ctx.strokeStyle = '#FF8C00'; // Orange color
+            ctx.setLineDash([10, 10]);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw orange boundary lines
+            ctx.strokeStyle = '#FF8C00'; // Orange color
+            ctx.lineWidth = 4;
+            ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+            ctx.lineWidth = 1;
+            
+            // Draw scores
+            drawScores();
         }
 
         // Draw scores and game info
@@ -2262,103 +2385,49 @@ function drawGame() {
         }
         
         function drawScores() {
-            // Draw main scores with appropriate labels based on game mode
-            ctx.font = '24px Arial';
-            ctx.fillStyle = 'white';
+            // Set font and alignment for scores
+            ctx.font = 'bold 32px Arial';
             ctx.textAlign = 'center';
+            ctx.fillStyle = '#FF8C00'; // Orange color for scores
             
             if (currentGameMode === GAME_MODE.PVE) {
-                ctx.fillText(`Player: ${playerScore}  |  Computer: ${computerScore}`, canvas.width / 2, 30);
-            } else if (currentGameMode === GAME_MODE.ONLINE) {
-                // Show current set and time remaining
-                if (!isRestPeriod) {
-                    ctx.fillText(`Set ${currentSet}: ${playerName} ${playerScore} - ${computerScore} ${opponentName}    Time: ${formatTime(matchTimeRemaining)}`, canvas.width / 2, 30);
-                    
-                    // If in set 2, also show the total scores
-                    if (currentSet === 2) {
-                        ctx.font = '18px Arial';
-                        const totalPlayerScore = set1Score.player + playerScore;
-                        const totalOpponentScore = set1Score.opponent + computerScore;
-                        
-                        // Determine who's leading and show with color
-                        let totalScoreText = `Total: ${playerName} ${totalPlayerScore} - ${totalOpponentScore} ${opponentName}`;
-                        
-                        // Draw a background for the total score
-                        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                        ctx.fillRect(canvas.width/2 - 250, 45, 500, 25);
-                        
-                        // Set text color based on who's leading
-                        if (totalPlayerScore > totalOpponentScore) {
-                            ctx.fillStyle = '#FF8C00'; // Orange for player leading
-                        } else if (totalOpponentScore > totalPlayerScore) {
-                            ctx.fillStyle = '#000'; // Black for opponent leading
-                        } else {
-                            ctx.fillStyle = '#fff'; // White for tie
-                        }
-                        
-                        ctx.fillText(totalScoreText, canvas.width / 2, 60);
-                        ctx.fillStyle = 'white'; // Reset fill style
-                    }
-                }
-            }
-            
-            // Draw game mode
-            ctx.font = '14px Arial';
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-            ctx.textAlign = 'right';
-            
-            let modeText = '';
-            switch(currentGameMode) {
-                case GAME_MODE.PVE: modeText = 'Player vs Computer'; break;
-                case GAME_MODE.PVP: modeText = 'Local Multiplayer'; break;
-                case GAME_MODE.ONLINE: modeText = 'Online Multiplayer'; break;
-            }
-            ctx.fillText(`Mode: ${modeText}`, canvas.width - 10, 20);
-            
-            // Only show difficulty in PvE mode
-            if (currentGameMode === GAME_MODE.PVE) {
-                ctx.fillText(`Difficulty: Level ${difficultyLevel}`, canvas.width - 10, 40);
-            }
-            
-            // Draw paddle size info
-            ctx.font = '14px Arial';
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-            ctx.textAlign = 'right';
-            ctx.fillText(`Paddle Size: ${paddleHeight}px`, canvas.width - 10, 60);
-            
-            // Draw controls info based on mode
-            ctx.font = '14px Arial';
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-            ctx.textAlign = 'left';
-            
-            if (currentGameMode === GAME_MODE.PVE) {
-                ctx.fillText('Controls: Mouse', 10, 20);
-            } else if (currentGameMode === GAME_MODE.PVP) {
-                ctx.fillText('P1: W/S keys | P2: ↑/↓ arrows', 10, 20);
-            } else if (currentGameMode === GAME_MODE.ONLINE) {
-                ctx.fillText('Controls: W/S or ↑/↓ arrows', 10, 20);
+                // Draw player score
+                ctx.fillText(playerScore, canvas.width / 4, 50);
                 
-                // Show connection status
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    ctx.fillStyle = 'rgba(46, 204, 113, 0.7)'; // Green
-                    ctx.fillText('● Connected', 10, 40);
-                } else {
-                    ctx.fillStyle = 'rgba(231, 76, 60, 0.7)'; // Red
-                    ctx.fillText('● Disconnected', 10, 40);
-                }
-            }
-            
-            // Draw rally info if playing
-            if (currentGameState === GAME_STATE.PLAYING) {
-                const rallySpeedMultiplier = 1 + Math.min(
-                    maxSpeedIncrease - 1,
-                    (totalHits / speedIncreaseInterval) * 0.1
-                );
+                // Draw computer score
+                ctx.fillText(computerScore, (canvas.width / 4) * 3, 50);
                 
-                ctx.font = '14px Arial';
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                ctx.textAlign = 'left';
-                ctx.fillText(`Rally: ${totalHits} | Speed: ${rallySpeedMultiplier.toFixed(1)}x`, 10, canvas.height - 10);
+                // Draw score limit indicator
+                ctx.font = '16px Arial';
+                ctx.fillText(`First to ${SCORE_LIMIT} wins!`, canvas.width / 2, 20);
+                
+                // Draw player labels
+                ctx.font = '18px Arial';
+                ctx.fillText('YOU', canvas.width / 4, 80);
+                ctx.fillText('COMPUTER', (canvas.width / 4) * 3, 80);
+            } else if (currentGameMode === GAME_MODE.ONLINE) {
+                // For online mode, position scores based on player's side
+                const leftScore = playerSide === 'left' ? playerScore : computerScore;
+                const rightScore = playerSide === 'left' ? computerScore : playerScore;
+                
+                // Draw scores
+                ctx.fillText(leftScore, canvas.width / 4, 50);
+                ctx.fillText(rightScore, (canvas.width / 4) * 3, 50);
+                
+                // Draw player labels with their names
+                ctx.font = '18px Arial';
+                const leftName = playerSide === 'left' ? playerName : opponentName;
+                const rightName = playerSide === 'left' ? opponentName : playerName;
+                
+                // Highlight player name in black, opponent in green
+                ctx.fillStyle = playerSide === 'left' ? '#000' : '#2ecc71'; 
+                ctx.fillText(leftName, canvas.width / 4, 80);
+                
+                ctx.fillStyle = playerSide === 'left' ? '#2ecc71' : '#000';
+                ctx.fillText(rightName, (canvas.width / 4) * 3, 80);
+                
+                // Reset fill style
+                ctx.fillStyle = '#FF8C00';
             }
         }
 
@@ -2905,6 +2974,25 @@ function drawGame() {
         function gameLoop() {
             // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw background
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw center line in orange
+            ctx.strokeStyle = '#FF8C00'; // Orange color
+            ctx.setLineDash([10, 10]);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw orange boundary lines
+            ctx.strokeStyle = '#FF8C00'; // Orange color
+            ctx.lineWidth = 4;
+            ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+            ctx.lineWidth = 1;
 
             if (currentGameState === GAME_STATE.PLAYING) {
                 // Handle player controls (keyboard input)
@@ -2956,9 +3044,74 @@ function drawGame() {
             drawPaddles();
             drawBall();
             drawScores();
+            
+            // Draw game status info if needed
+            if (currentGameMode === GAME_MODE.ONLINE) {
+                // Draw online game info (timer, connection status, etc.)
+                drawOnlineGameInfo();
+            } else if (currentGameMode === GAME_MODE.PVE) {
+                // Draw PvE game info (difficulty, etc.)
+                drawPvEGameInfo();
+            }
 
             // Continue game loop
             requestAnimationFrame(gameLoop);
+        }
+
+        // Draw online game info
+        function drawOnlineGameInfo() {
+            ctx.font = '14px Arial';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.textAlign = 'center';
+            
+            // Show current set and time remaining in top center
+            if (!isRestPeriod) {
+                ctx.fillText(`Set ${currentSet} | Time: ${formatTime(matchTimeRemaining)}`, canvas.width / 2, 20);
+                
+                // If in set 2, also show total scores
+                if (currentSet === 2) {
+                    const totalPlayerScore = set1Score.player + playerScore;
+                    const totalOpponentScore = set1Score.opponent + computerScore;
+                    ctx.fillText(`Total: ${playerName} ${totalPlayerScore} - ${totalOpponentScore} ${opponentName}`, canvas.width / 2, canvas.height - 10);
+                }
+            }
+            
+            // Connection status in top-left
+            ctx.textAlign = 'left';
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                ctx.fillStyle = 'rgba(46, 204, 113, 0.7)'; // Green
+                ctx.fillText('● Connected', 10, 20);
+            } else {
+                ctx.fillStyle = 'rgba(231, 76, 60, 0.7)'; // Red
+                ctx.fillText('● Disconnected', 10, 20);
+            }
+            
+            // Controls info
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.fillText('Controls: W/S or ↑/↓ arrows', 10, 40);
+        }
+
+        // Draw PvE game info
+        function drawPvEGameInfo() {
+            ctx.font = '14px Arial';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.textAlign = 'right';
+            
+            // Game mode and difficulty
+            ctx.fillText(`Mode: Player vs Computer`, canvas.width - 10, 20);
+            ctx.fillText(`Difficulty: Level ${difficultyLevel}`, canvas.width - 10, 40);
+            
+            // Controls info
+            ctx.textAlign = 'left';
+            ctx.fillText('Controls: Mouse', 10, 20);
+            
+            // Rally info
+            const rallySpeedMultiplier = 1 + Math.min(
+                maxSpeedIncrease - 1,
+                (totalHits / speedIncreaseInterval) * 0.1
+            );
+            
+            ctx.fillText(`Rally: ${totalHits} | Speed: ${rallySpeedMultiplier.toFixed(1)}x`, 10, canvas.height - 10);
         }
 
         // Set initial difficulty
